@@ -409,8 +409,10 @@ export default function TaxEasyMvp() {
   };
 
   return (
-    <main className="min-h-screen bg-gradient-to-br from-[#f0fdf4] via-[#fcfffd] to-[#ecfdf5] text-slate-900 relative">
-      <div className={`mx-auto w-full max-w-md px-4 pt-6 ${showBottomNav ? "pb-32" : "pb-8"}`}>
+    <main className="min-h-screen bg-slate-100 text-slate-900 sm:flex sm:items-start sm:justify-center sm:p-6">
+      <div className="relative min-h-screen w-full max-w-md overflow-hidden bg-gradient-to-br from-[#f0fdf4] via-[#fcfffd] to-[#ecfdf5] sm:min-h-[812px] sm:max-h-[calc(100vh-3rem)] sm:rounded-[2.75rem] sm:border-[10px] sm:border-slate-950 sm:shadow-2xl">
+        <div className="pointer-events-none absolute left-1/2 top-2 z-[60] hidden h-1.5 w-24 -translate-x-1/2 rounded-full bg-slate-800 sm:block" />
+        <div className={`mx-auto h-full w-full max-w-md overflow-y-auto px-4 pt-6 sm:max-h-[calc(100vh-3rem)] ${showBottomNav ? "pb-32" : "pb-8"}`}>
         <header className="mb-6 flex items-center justify-between">
           <button
             type="button"
@@ -1276,8 +1278,8 @@ export default function TaxEasyMvp() {
           </section>
         )}
       </div>
-      {showBottomNav && (
-        <nav className="fixed inset-x-0 bottom-0 z-50 border-t border-emerald-100 bg-white/95 px-3 pb-[calc(env(safe-area-inset-bottom)+0.75rem)] pt-2 shadow-[0_-10px_30px_rgba(15,23,42,0.08)] backdrop-blur">
+        {showBottomNav && (
+        <nav className="fixed inset-x-0 bottom-0 z-50 border-t border-emerald-100 bg-white/95 px-3 pb-[calc(env(safe-area-inset-bottom)+0.75rem)] pt-2 shadow-[0_-10px_30px_rgba(15,23,42,0.08)] backdrop-blur sm:absolute">
           <div className="mx-auto grid w-full max-w-md grid-cols-4 gap-1">
             {[
               { id: "home", label: "Home", icon: Home, screen: "home" },
@@ -1306,7 +1308,8 @@ export default function TaxEasyMvp() {
             })}
           </div>
         </nav>
-      )}
+        )}
+      </div>
     </main>
   );
 }
