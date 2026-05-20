@@ -1,193 +1,111 @@
-# TaxEasy Survey
+# TaxEasy: Pay your tax in under 90 seconds
 
-A Next.js + Supabase survey app for validating the TaxEasy product idea — built for the TS Academy Product Management capstone (GovTech / Public Services theme).
+TaxEasy is a mobile-first, zero-friction web application designed to help Nigerian SMEs, freelancers, salary earners with side income, and informal earners understand and pay tax from real financial activity. Users upload a bank statement PDF, review auto-categorized transactions, calculate what they owe, pay, and receive instant proof.
 
-## What's Inside
+Our core philosophy is built on three pillars: **Simplicity** (statement upload before manual forms), **Proof** (instant QR receipts and downloadable Tax Clearance Certificates), and **Trust** (a Transparency Layer showing exactly how your state spends tax revenue).
 
-- **Public survey** (`/`) — 10 questions, mobile-first, one question at a time
-- **Live results page** (`/results`) — public, real-time bar charts of all responses
-- **Admin export** (`/admin`) — password-protected CSV download of all responses
-- **Supabase backend** — PostgreSQL database, free tier
-- **Deploy on Vercel** — free, takes ~5 minutes
+**Live Demo:** [Insert Deployed URL Here]
 
 ---
 
-## Quick Setup (15 minutes total)
+## 1. The Problem We Solve
 
-### Step 1: Create a Supabase Project
+In Nigeria, nearly half of small earners — 48% — either don't pay tax or don't know how. The system isn't broken because people refuse to pay; it's broken because the existing tools are too confusing, opaque, and demanding to even try. 
 
-1. Go to [supabase.com](https://supabase.com) and sign up (free, no card needed)
-2. Click **New Project**
-3. Name it `taxeasy-survey`, set a database password (save it somewhere), pick the closest region (probably `eu-west` for Lagos)
-4. Wait ~2 minutes for the project to spin up
-
-### Step 2: Set Up the Database
-
-1. In your Supabase dashboard, go to **SQL Editor** → **New Query**
-2. Open the file `supabase-setup.sql` from this project
-3. Copy the entire contents and paste into the SQL editor
-4. Click **Run**
-
-You should see "Success. No rows returned." This created your table and security policies.
-
-### Step 3: Get Your API Keys
-
-1. In Supabase dashboard, go to **Settings** → **API**
-2. You'll need three values:
-   - **Project URL** (looks like `https://abcdef.supabase.co`)
-   - **anon / public key** (long string, safe to expose)
-   - **service_role key** (long string, KEEP SECRET — never commit this)
-
-### Step 4: Run Locally
-
-```bash
-# Install dependencies
-npm install
-
-# Create your env file
-cp .env.example .env.local
-
-# Edit .env.local and fill in your Supabase keys + a strong admin password
-```
-
-Your `.env.local` should look like:
-
-```
-NEXT_PUBLIC_SUPABASE_URL=https://abcdef.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOi...
-SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOi...
-ADMIN_PASSWORD=YourStrongPasswordHere
-```
-
-Then start the dev server:
-
-```bash
-npm run dev
-```
-
-Open [http://localhost:3000](http://localhost:3000) and take the survey to test.
-
-### Step 5: Deploy to Vercel
-
-1. Push this code to a GitHub repo
-2. Go to [vercel.com](https://vercel.com), sign up with GitHub
-3. Click **Add New** → **Project** → import your repo
-4. In the **Environment Variables** section, add the same 4 variables from your `.env.local`:
-   - `NEXT_PUBLIC_SUPABASE_URL`
-   - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
-   - `SUPABASE_SERVICE_ROLE_KEY`
-   - `ADMIN_PASSWORD`
-5. Click **Deploy**
-
-In ~2 minutes you'll have a live URL like `taxeasy-survey.vercel.app`. Share it on WhatsApp.
+Our survey of 23 respondents validated this: 71% do not pay tax or do not know how to pay, 57% have unreported side income, and users abandon flows when asked for their BVN before seeing their tax bill (a 17.4% comfort gap). Furthermore, 82.6% stated they would be willing to pay *if* they could see where their money was actually going. TaxEasy was built directly in response to this data.
 
 ---
 
-## How to Use It
+## 2. Screenshots
 
-### Sharing the Survey
-- Send the main URL (`https://your-app.vercel.app`) to respondents on WhatsApp, Twitter, etc.
-- They'll see the welcome screen, take the 10-question survey, and submit anonymously.
+*(Screenshots captured at 375px mobile width)*
 
-### Viewing Results
-- Anyone can visit `/results` to see live bar charts of responses.
-- This is great for sharing aggregate findings with your team.
+| Home Dashboard | Statement Review | Calculation Result |
+| :---: | :---: | :---: |
+| ![Home](docs/screenshots/01-home.png) | ![Review](docs/screenshots/03-review.png) | ![Result](docs/screenshots/04-result.png) |
 
-### Exporting Data for Discovery Evidence
-- Visit `/admin` on your deployed site
-- Enter the `ADMIN_PASSWORD` you set in Vercel env vars
-- Click **Download CSV** — opens in Excel, Google Sheets, or any analytics tool
-
-### Viewing Raw Data in Supabase
-- Open your Supabase dashboard → **Table Editor** → `survey_responses`
-- See every response, filter, sort, run SQL queries
-- No login limits — log in as often as you want
+| Receipt (with QR) | TCC PDF Preview | Transparency Layer |
+| :---: | :---: | :---: |
+| ![Receipt](docs/screenshots/06-receipt.png) | [Generated during demo via TCC button] | ![Transparency](docs/screenshots/07-transparency.png) |
 
 ---
 
-## Project Structure
+## 3. Demo Access
 
-```
-taxeasy-survey/
-├── app/
-│   ├── page.js              # Main survey page (intro + questions)
-│   ├── results/page.js      # Public live results dashboard
-│   ├── admin/page.js        # Password-protected CSV export
-│   ├── api/
-│   │   ├── responses/       # POST submit, GET fetch all
-│   │   └── admin/export/    # POST CSV export (password required)
-│   ├── layout.js
-│   └── globals.css
-├── lib/
-│   ├── supabase.js          # Supabase client setup
-│   └── questions.js         # Survey questions (single source of truth)
-├── supabase-setup.sql       # Run this once in Supabase SQL editor
-├── .env.example             # Template for env variables
-├── package.json
-└── README.md
+- **Live Production URL:** [Insert Deployed URL Here]
+- **Demo Mode:** Append `?demo=true` to the URL (e.g., `https://taxeasy.vercel.app/?demo=true`). 
+
+*Note: Activating Demo Mode safely populates the app with 3 historical mock payments and a sample parsed GTBank statement. No real data is stored or transmitted.*
+
+---
+
+## 4. Tech Stack
+
+**Next.js 14, React, TypeScript, Tailwind CSS, Supabase, @react-pdf/renderer, qrcode.react, lucide-react**
+
+---
+
+## 5. Local Setup
+
+Run the project locally in under 5 minutes:
+
+1. **Clone the repository:**
+   ```bash
+   git clone https://github.com/your-org/taxeasy.git
+   cd taxeasy
+   ```
+2. **Install dependencies:**
+   ```bash
+   npm install
+   ```
+3. **Configure Environment:**
+   Copy the example environment file:
+   ```bash
+   cp .env.example .env.local
+   ```
+   *(Note: Supabase keys are optional for the core MVP runtime, as app state relies entirely on browser `localStorage`.)*
+4. **Run the Development Server:**
+   ```bash
+   npm run dev
+   ```
+5. **Open the App:**
+   Navigate to `http://localhost:3000/?demo=true` in Chrome and toggle Developer Tools to Device Mode (375px width).
+
+---
+
+## 6. Project Structure
+
+```text
+├── app/                  # Next.js App Router (page.js is the main MVP state machine)
+├── components/           # Reusable React components (TccPDF)
+├── docs/                 # Architecture, Decisions, and Screenshots
+├── lib/                  # Pure utility functions (taxCalculator.ts, bankStatement.ts, transparencyData.ts)
+├── tests/                # Unit tests for the tax calculator
+├── DEMO_SCRIPT.md        # The 5-minute presentation script
+└── TECH_DEBT.md          # Technical debt and future migration plans
 ```
 
 ---
 
-## Customizing the Survey
+## 7. Documentation
 
-All 10 questions live in `lib/questions.js`. To edit:
+For a deeper dive into the product thinking and technical architecture of TaxEasy, review our core documentation:
 
-- **Change a question:** edit the `question` field
-- **Change options:** edit the `options` array (for `single` type)
-- **Add a new question:** add a new object to the array, give it a unique `id` like `q11`
-- **Change scale labels:** edit `scaleLabels` (for `scale` type)
-
-After editing, the changes apply to:
-- The survey form (automatically)
-- The results page (automatically)
-- The CSV export (automatically — uses question IDs as column headers)
-
-No database changes needed; new questions just become new keys in the JSON.
+- [Demo Presentation Script](DEMO_SCRIPT.md)
+- [Architecture Overview](docs/architecture.md)
+- [Decision Log](docs/DECISIONS.md)
+- [Technical Debt & Limitations](TECH_DEBT.md)
 
 ---
 
-## Security Notes
+## 8. Known Limitations
 
-- The **anon key** is safe to expose in the browser. It's protected by Row Level Security (RLS) policies.
-- The **service role key** must NEVER be sent to the client. It's only used in `/api/admin/export/route.js` server-side.
-- The **admin password** is checked server-side before CSV export runs.
-- Survey responses are anonymous — no IP, no fingerprint, no user ID stored.
+The current MVP is optimized for UX demonstration and speed. It parses one representative GTBank statement format and uses seeded sample statements for other banks. It relies on `localStorage` for session history, which means data is tied to the specific browser and device. Identity verification and payments are mocked to bypass regulatory overhead, meaning the platform is not currently secure for real financial transactions. For a complete list of limitations and migration plans, see [TECH_DEBT.md](TECH_DEBT.md).
 
 ---
 
-## Capstone Submission Tips
+## 9. The Team
 
-For the TS Academy capstone, this app gives you:
+[Team names to be added before submission]
 
-- **Discovery evidence:** Real survey responses exported as CSV
-- **Build evidence:** Working demo link (the Vercel URL), architecture (Next.js → Supabase Postgres), API approach (REST), basic security (RLS + admin password)
-- **Metrics & instrumentation:** Response count, distribution per question
-- **Engineering quality:** Real database, proper API routes, environment variable management
-
-Add this README to your submission folder as part of the build documentation.
-
----
-
-## Troubleshooting
-
-**Survey submits but doesn't save:**
-- Check Supabase dashboard → **Logs** → **API logs**. Likely RLS policy missing — re-run `supabase-setup.sql`.
-
-**Admin export says "Unauthorized":**
-- The password in your form must match `ADMIN_PASSWORD` in your env vars exactly.
-- After changing env vars on Vercel, you must redeploy (Settings → Deployments → Redeploy).
-
-**Project paused:**
-- Supabase free tier pauses after 7 days of inactivity. Just click "Restore" in the dashboard. Data is intact.
-
-**"Failed to fetch responses" on results page:**
-- Either Supabase is down or your env vars are wrong on Vercel. Check **Settings → Environment Variables**.
-
----
-
-## Built For
-
-TS Academy Product Management Capstone — Group on **Theme 3: GovTech / Public Services**.
-
-Tax made simple for everyday Nigerians.
+*TS Academy Product Management Capstone, Group [N], GovTech/Public Services theme*

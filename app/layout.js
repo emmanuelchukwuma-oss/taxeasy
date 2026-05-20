@@ -1,9 +1,9 @@
 import "./globals.css";
 
 export const metadata = {
-  title: "Help Us Build Something Useful — Tax Survey",
+  title: "TaxEasy — Pay tax from your bank statement",
   description:
-    "A 3-minute survey on paying tax in Nigeria under the new 2026 tax laws.",
+    "A mobile-first MVP for Nigerian taxpayers to upload bank statements, calculate tax, pay, and get verifiable proof.",
 };
 
 export default function RootLayout({ children }) {
