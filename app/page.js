@@ -676,26 +676,27 @@ export default function TaxEasyPremium() {
     return bank.code(amt);
   };
 
-  // ── Payment routing ───────────────────────────────────────────────────────
+  const copyToClipboard = async (text, onDone) => {
+    try { await navigator.clipboard.writeText(text); onDone(); } catch (_) {}
+  };
+
+  // ── Payment routing — goes to specific sub-screens (Card details, Bank Transfer details, USSD details)
   const handleProceedToPayment = () => {
+    if (!calculation) return;
     setCardError("");
     if (paymentMethod === "card")          { setScreen("cardPayment"); }
     if (paymentMethod === "bank_transfer") { generateVirtualAccount(); setScreen("bankTransfer"); }
     if (paymentMethod === "ussd")          { setScreen("ussdPayment"); }
   };
 
-  const copyToClipboard = async (text, onDone) => {
-    try { await navigator.clipboard.writeText(text); onDone(); } catch (_) {}
-  };
-
-  // ── handlePay ───────────────────────────────────────────────────────────
+  // ── handlePay — starts the automatic completing processing flow ────────
   const handlePay = () => {
     if (!calculation) return;
     if (countdownRef.current) { clearInterval(countdownRef.current); countdownRef.current = null; }
 
-    const reference = `TXE-${new Date().getFullYear()}-${Math.floor(100000 + Math.random() * 900000)}`;
-    const payload = {
-      reference,
+    // Build the record NOW as a local const — captured in the closure, never stale
+    const record = {
+      reference:       `TXE-${new Date().getFullYear()}-${Math.floor(100000 + Math.random() * 900000)}`,
       amountNaira:     calculation.totalAmountDueNaira,
       taxNaira:        calculation.totalTaxNaira,
       serviceFeeNaira: calculation.serviceFeeNaira,
@@ -707,10 +708,29 @@ export default function TaxEasyPremium() {
       name:            bvnProfile?.fullName || "Verified Taxpayer",
     };
 
-    setPaymentLoading(true);
+    // Show processing screen immediately
     setProcessingStep(0);
-    setScreenState("paymentProcessing");
-    setProcessingPayload(payload);  // ← triggers useEffect via unique reference
+    setScreen("paymentProcessing");
+
+    // Tick through steps
+    let step = 0;
+    const ticker = setInterval(() => {
+      step += 1;
+      if (step < PROCESSING_STEPS.length) setProcessingStep(step);
+      else clearInterval(ticker);
+    }, 600);
+
+    // Auto-complete after 3.4 s — record is a local const, never null, never stale
+    window.setTimeout(() => {
+      clearInterval(ticker);
+      setPaymentRecord(record);
+      setHistory(prev => {
+        const updated = [record, ...prev];
+        try { localStorage.setItem("taxeasy_history", JSON.stringify(updated)); } catch (_) {}
+        return updated;
+      });
+      setScreen("paymentSuccess");
+    }, 3400);
   };
 
   const paymentMethodLabel = (value) => {
