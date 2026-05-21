@@ -65,6 +65,15 @@ const formatNaira = (value) =>
     .format(Number.isFinite(value) ? value : 0)
     .replace("NGN", "₦");
 
+// Defined outside component so setInterval closures never capture a stale copy
+const PROCESSING_STEPS = [
+  "Establishing secure connection to NIBSS API...",
+  "Validating secure identity credentials...",
+  "Processing monetary remittance...",
+  "Confirming Federal Tax ID remittance...",
+  "Generating verified Tax Clearance Certificate (TCC)...",
+];
+
 const SCREEN_TITLES = {
   welcome:          "TaxEasy",
   phone:            "Sign in",
@@ -382,15 +391,9 @@ export default function TaxEasyPremium() {
   // USSD bank selector
   const [ussdBank, setUssdBank] = useState("GTBank");
 
-  // Payment processing steps simulation
+  // Payment processing steps
   const [processingStep, setProcessingStep] = useState(0);
-  const processingSteps = [
-    "Establishing secure connection to NIBSS API...",
-    "Validating secure identity credentials...",
-    "Processing monetary remittance...",
-    "Confirming Federal Tax ID remittance...",
-    "Generating verified Tax Clearance Certificate (TCC)...",
-  ];
+  const processingTickerRef = useRef(null);
 
   const canContinuePhone = phone.trim().replace(/\s/g, "").length >= 10;
   const canVerifyOtp = otp.trim().length === 6;
@@ -655,26 +658,43 @@ export default function TaxEasyPremium() {
     } catch (_) {}
   };
 
-  // ── Core payment processor (unchanged) ───────────────────────────────────
+  // ── Core payment processor ────────────────────────────────────────────────
+  // PROCESSING_STEPS lives outside the component so the setInterval closure
+  // always reads the same stable reference — no stale-closure stall.
   const handlePay = () => {
     if (!calculation) return;
+
+    // Stop the bank-transfer countdown timer if it's running
+    if (countdownRef.current) {
+      clearInterval(countdownRef.current);
+      countdownRef.current = null;
+    }
+
+    // Reset any previous ticker
+    if (processingTickerRef.current) clearInterval(processingTickerRef.current);
+
     setPaymentLoading(true);
-    setScreen("paymentProcessing");
     setProcessingStep(0);
+    setScreen("paymentProcessing");
 
-    // Dynamic processing steps ticker
-    const timer = setInterval(() => {
-      setProcessingStep((prev) => {
-        if (prev >= processingSteps.length - 1) {
-          clearInterval(timer);
-          return prev;
-        }
-        return prev + 1;
-      });
-    }, 700);
+    // Advance through steps every 600ms (5 steps × 600ms = 3000ms)
+    let step = 0;
+    processingTickerRef.current = setInterval(() => {
+      step += 1;
+      if (step >= PROCESSING_STEPS.length) {
+        clearInterval(processingTickerRef.current);
+        processingTickerRef.current = null;
+        return;
+      }
+      setProcessingStep(step);
+    }, 600);
 
+    // Finalise at 3400ms — comfortably after all steps complete
     setTimeout(() => {
-      clearInterval(timer);
+      if (processingTickerRef.current) {
+        clearInterval(processingTickerRef.current);
+        processingTickerRef.current = null;
+      }
       const now = new Date();
       const reference = `TXE-${now.getFullYear()}-${Math.floor(100000 + Math.random() * 900000)}`;
       const record = {
@@ -693,7 +713,7 @@ export default function TaxEasyPremium() {
       saveToHistory(record);
       setPaymentLoading(false);
       setScreen("paymentSuccess");
-    }, 4000);
+    }, 3400);
   };
 
   const paymentMethodLabel = (value) => {
@@ -2484,7 +2504,7 @@ export default function TaxEasyPremium() {
 
                   {/* Processing Step indicators */}
                   <div className="max-w-xs mx-auto border border-slate-100 bg-slate-50 p-4.5 rounded-2xl text-left space-y-3.5">
-                    {processingSteps.map((step, idx) => {
+                    {PROCESSING_STEPS.map((step, idx) => {
                       const isActive = processingStep === idx;
                       const isCompleted = processingStep > idx;
                       return (
