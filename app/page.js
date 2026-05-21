@@ -393,10 +393,10 @@ export default function TaxEasyPremium() {
 
   // Payment processing steps
   const [processingStep, setProcessingStep] = useState(0);
+  const [paymentKey,     setPaymentKey]     = useState(0);  // increments every Pay tap
   const processingTickerRef = useRef(null);
   const processingFinalRef  = useRef(null);
-  // Snapshot of calculation captured the moment Pay is pressed
-  const pendingPaymentRef   = useRef(null);
+  const pendingPaymentRef   = useRef(null); // record snapshot, read by useEffect
 
   const canContinuePhone = phone.trim().replace(/\s/g, "").length >= 10;
   const canVerifyOtp = otp.trim().length === 6;
@@ -450,22 +450,21 @@ export default function TaxEasyPremium() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [otp]);
 
-  // ── Payment processing engine ────────────────────────────────────────────
-  // Runs entirely inside useEffect so React 18 batching / StrictMode cannot
-  // interfere.  handlePay only sets state; this effect does ALL the timing.
+  // ── Payment processing engine ─────────────────────────────────────────────
+  // Watches paymentKey (a counter that increments each time Pay is tapped).
+  // This fires reliably even when screen was already "paymentProcessing".
   useEffect(() => {
-    if (screen !== "paymentProcessing") return;
-    const snapshot = pendingPaymentRef.current;
-    if (!snapshot) return;
+    if (paymentKey === 0) return;           // skip initial mount
+    const record = pendingPaymentRef.current;
+    if (!record) return;
 
-    // Reset step counter
-    setProcessingStep(0);
-
-    // Clear any leftover timers
+    // Clear any leftover timers from a previous attempt
     if (processingTickerRef.current) clearInterval(processingTickerRef.current);
     if (processingFinalRef.current)  clearTimeout(processingFinalRef.current);
 
-    // Advance through PROCESSING_STEPS every 600ms
+    setProcessingStep(0);
+
+    // Tick through steps every 600 ms
     let step = 0;
     processingTickerRef.current = setInterval(() => {
       step += 1;
@@ -477,26 +476,26 @@ export default function TaxEasyPremium() {
       }
     }, 600);
 
-    // Navigate to success at 3 400ms
+    // Navigate to success after 3 400 ms
     processingFinalRef.current = setTimeout(() => {
       if (processingTickerRef.current) {
         clearInterval(processingTickerRef.current);
         processingTickerRef.current = null;
       }
-      const record = snapshot;
+      const r = pendingPaymentRef.current;
       pendingPaymentRef.current = null;
-      setPaymentRecord(record);
-      saveToHistory(record);
+      setPaymentRecord(r);
+      saveToHistory(r);
       setPaymentLoading(false);
-      setScreen("paymentSuccess");
+      setScreenState("paymentSuccess");  // bypass setScreen nav-stack logic
     }, 3400);
 
     return () => {
-      if (processingTickerRef.current) clearInterval(processingTickerRef.current);
-      if (processingFinalRef.current)  clearTimeout(processingFinalRef.current);
+      clearInterval(processingTickerRef.current);
+      clearTimeout(processingFinalRef.current);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [screen]);
+  }, [paymentKey]);
 
   const handleCalculate = () => {
     setCalcError("");
@@ -709,7 +708,7 @@ export default function TaxEasyPremium() {
     } catch (_) {}
   };
 
-  // ── handlePay — only captures state, navigation driven by useEffect above
+  // ── handlePay ─────────────────────────────────────────────────────────────
   const handlePay = () => {
     if (!calculation) return;
 
@@ -719,11 +718,10 @@ export default function TaxEasyPremium() {
       countdownRef.current = null;
     }
 
-    // Build the payment record now so the useEffect closure is simple
+    // Snapshot the record into a ref so the useEffect closure is always fresh
     const now = new Date();
-    const reference = `TXE-${now.getFullYear()}-${Math.floor(100000 + Math.random() * 900000)}`;
     pendingPaymentRef.current = {
-      reference,
+      reference:       `TXE-${now.getFullYear()}-${Math.floor(100000 + Math.random() * 900000)}`,
       amountNaira:     calculation.totalAmountDueNaira,
       taxNaira:        calculation.totalTaxNaira,
       serviceFeeNaira: calculation.serviceFeeNaira,
@@ -737,7 +735,8 @@ export default function TaxEasyPremium() {
 
     setPaymentLoading(true);
     setProcessingStep(0);
-    setScreen("paymentProcessing");  // ← triggers the useEffect
+    setScreenState("paymentProcessing");  // bypass nav-stack; direct state write
+    setPaymentKey((k) => k + 1);          // ← THIS triggers the useEffect
   };
 
   const paymentMethodLabel = (value) => {
