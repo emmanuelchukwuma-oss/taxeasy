@@ -394,6 +394,9 @@ export default function TaxEasyPremium() {
   // Payment processing steps
   const [processingStep, setProcessingStep] = useState(0);
   const processingTickerRef = useRef(null);
+  const processingFinalRef  = useRef(null);
+  // Snapshot of calculation captured the moment Pay is pressed
+  const pendingPaymentRef   = useRef(null);
 
   const canContinuePhone = phone.trim().replace(/\s/g, "").length >= 10;
   const canVerifyOtp = otp.trim().length === 6;
@@ -446,6 +449,54 @@ export default function TaxEasyPremium() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [otp]);
+
+  // ── Payment processing engine ────────────────────────────────────────────
+  // Runs entirely inside useEffect so React 18 batching / StrictMode cannot
+  // interfere.  handlePay only sets state; this effect does ALL the timing.
+  useEffect(() => {
+    if (screen !== "paymentProcessing") return;
+    const snapshot = pendingPaymentRef.current;
+    if (!snapshot) return;
+
+    // Reset step counter
+    setProcessingStep(0);
+
+    // Clear any leftover timers
+    if (processingTickerRef.current) clearInterval(processingTickerRef.current);
+    if (processingFinalRef.current)  clearTimeout(processingFinalRef.current);
+
+    // Advance through PROCESSING_STEPS every 600ms
+    let step = 0;
+    processingTickerRef.current = setInterval(() => {
+      step += 1;
+      if (step < PROCESSING_STEPS.length) {
+        setProcessingStep(step);
+      } else {
+        clearInterval(processingTickerRef.current);
+        processingTickerRef.current = null;
+      }
+    }, 600);
+
+    // Navigate to success at 3 400ms
+    processingFinalRef.current = setTimeout(() => {
+      if (processingTickerRef.current) {
+        clearInterval(processingTickerRef.current);
+        processingTickerRef.current = null;
+      }
+      const record = snapshot;
+      pendingPaymentRef.current = null;
+      setPaymentRecord(record);
+      saveToHistory(record);
+      setPaymentLoading(false);
+      setScreen("paymentSuccess");
+    }, 3400);
+
+    return () => {
+      if (processingTickerRef.current) clearInterval(processingTickerRef.current);
+      if (processingFinalRef.current)  clearTimeout(processingFinalRef.current);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [screen]);
 
   const handleCalculate = () => {
     setCalcError("");
@@ -658,62 +709,35 @@ export default function TaxEasyPremium() {
     } catch (_) {}
   };
 
-  // ── Core payment processor ────────────────────────────────────────────────
-  // PROCESSING_STEPS lives outside the component so the setInterval closure
-  // always reads the same stable reference — no stale-closure stall.
+  // ── handlePay — only captures state, navigation driven by useEffect above
   const handlePay = () => {
     if (!calculation) return;
 
-    // Stop the bank-transfer countdown timer if it's running
+    // Stop bank-transfer countdown if running
     if (countdownRef.current) {
       clearInterval(countdownRef.current);
       countdownRef.current = null;
     }
 
-    // Reset any previous ticker
-    if (processingTickerRef.current) clearInterval(processingTickerRef.current);
+    // Build the payment record now so the useEffect closure is simple
+    const now = new Date();
+    const reference = `TXE-${now.getFullYear()}-${Math.floor(100000 + Math.random() * 900000)}`;
+    pendingPaymentRef.current = {
+      reference,
+      amountNaira:     calculation.totalAmountDueNaira,
+      taxNaira:        calculation.totalTaxNaira,
+      serviceFeeNaira: calculation.serviceFeeNaira,
+      method:          paymentMethod,
+      paidAt:          now.toISOString(),
+      statementSource: parsedStatement?.bank || "Manual estimate",
+      identity:        bvnProfile?.bvn || maskedIdentity(),
+      identityType:    identityType,
+      name:            bvnProfile?.fullName || "Verified Taxpayer",
+    };
 
     setPaymentLoading(true);
     setProcessingStep(0);
-    setScreen("paymentProcessing");
-
-    // Advance through steps every 600ms (5 steps × 600ms = 3000ms)
-    let step = 0;
-    processingTickerRef.current = setInterval(() => {
-      step += 1;
-      if (step >= PROCESSING_STEPS.length) {
-        clearInterval(processingTickerRef.current);
-        processingTickerRef.current = null;
-        return;
-      }
-      setProcessingStep(step);
-    }, 600);
-
-    // Finalise at 3400ms — comfortably after all steps complete
-    setTimeout(() => {
-      if (processingTickerRef.current) {
-        clearInterval(processingTickerRef.current);
-        processingTickerRef.current = null;
-      }
-      const now = new Date();
-      const reference = `TXE-${now.getFullYear()}-${Math.floor(100000 + Math.random() * 900000)}`;
-      const record = {
-        reference,
-        amountNaira: calculation.totalAmountDueNaira,
-        taxNaira: calculation.totalTaxNaira,
-        serviceFeeNaira: calculation.serviceFeeNaira,
-        method: paymentMethod,
-        paidAt: now.toISOString(),
-        statementSource: parsedStatement?.bank || "Manual estimate",
-        identity: bvnProfile?.bvn || maskedIdentity(),
-        identityType: identityType,
-        name: bvnProfile?.fullName || "Verified Taxpayer",
-      };
-      setPaymentRecord(record);
-      saveToHistory(record);
-      setPaymentLoading(false);
-      setScreen("paymentSuccess");
-    }, 3400);
+    setScreen("paymentProcessing");  // ← triggers the useEffect
   };
 
   const paymentMethodLabel = (value) => {
@@ -2489,7 +2513,7 @@ export default function TaxEasyPremium() {
               )}
 
               {/* PAYMENT PROCESSING SPINNER */}
-              {screen === "paymentProcessing" && calculation && (
+              {screen === "paymentProcessing" && (
                 <section className="premium-card p-8 text-center space-y-6 screen-enter">
                   <div className="relative mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-[#f0fdf4] border border-[#d1fae5] scale-110">
                     <Loader2 className="h-9 w-9 animate-spin text-[#064e3b]" />
