@@ -387,15 +387,15 @@ export default function TaxEasyPremium() {
   const [vaDisplay,     setVaDisplay]     = useState(null); // triggers re-render
   const [transferCopied,   setTransferCopied]   = useState(false);
   const [confirmSheetOpen, setConfirmSheetOpen] = useState(false);
-  const [transferCountdown,setTransferCountdown] = useState(1800);
-  const countdownRef       = useRef(null);
-  const [ussdBank,         setUssdBank]    = useState("GTBank");
-
-  // Payment processing
-  const [processingStep, setProcessingStep] = useState(0);
-  const payTimerRef    = useRef(null);
-  const payTickerRef   = useRef(null);
-  const pendingPayRef  = useRef(null);  // record written before setTimeout fires
+  // Payment processing — processingPayload.reference is unique per tap
+  // so the useEffect below ALWAYS fires on every Pay, no exceptions
+  const [processingStep,    setProcessingStep]    = useState(0);
+  const [processingPayload, setProcessingPayload] = useState(null);
+  const _tickerRef = useRef(null);
+  const _timerRef  = useRef(null);
+  const [transferCountdown, setTransferCountdown] = useState(1800);
+  const countdownRef = useRef(null);
+  const [ussdBank, setUssdBank] = useState("GTBank");
 
   const canContinuePhone = phone.trim().replace(/\s/g, "").length >= 10;
   const canVerifyOtp = otp.trim().length === 6;
@@ -448,6 +448,44 @@ export default function TaxEasyPremium() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [otp]);
+
+  // ── Payment processing engine ──────────────────────────────────────────────
+  // processingPayload.reference is a new Math.random() string on every Pay tap.
+  // React sees a changed dep and fires this effect 100% of the time.
+  useEffect(() => {
+    if (!processingPayload) return;
+
+    // Clear any leftover timers
+    clearInterval(_tickerRef.current);
+    clearTimeout(_timerRef.current);
+    setProcessingStep(0);
+
+    let step = 0;
+    _tickerRef.current = setInterval(() => {
+      step += 1;
+      if (step < PROCESSING_STEPS.length) {
+        setProcessingStep(step);
+      } else {
+        clearInterval(_tickerRef.current);
+      }
+    }, 600);
+
+    _timerRef.current = setTimeout(() => {
+      clearInterval(_tickerRef.current);
+      // processingPayload is in scope — no stale closure, no refs needed
+      setPaymentRecord(processingPayload);
+      saveToHistory(processingPayload);
+      setProcessingPayload(null);      // reset for next payment
+      setPaymentLoading(false);
+      setScreenState("paymentSuccess");
+    }, 3400);
+
+    return () => {
+      clearInterval(_tickerRef.current);
+      clearTimeout(_timerRef.current);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [processingPayload?.reference]);  // reference is unique every tap → always fires
 
   const handleCalculate = () => {
     setCalcError("");
@@ -650,60 +688,29 @@ export default function TaxEasyPremium() {
     try { await navigator.clipboard.writeText(text); onDone(); } catch (_) {}
   };
 
-  // ── handlePay: guaranteed navigation via try-finally ────────────────────
+  // ── handlePay ───────────────────────────────────────────────────────────
   const handlePay = () => {
     if (!calculation) return;
-    if (countdownRef.current)  { clearInterval(countdownRef.current);  countdownRef.current  = null; }
-    if (payTimerRef.current)   { clearTimeout(payTimerRef.current);    payTimerRef.current   = null; }
-    if (payTickerRef.current)  { clearInterval(payTickerRef.current);  payTickerRef.current  = null; }
+    if (countdownRef.current) { clearInterval(countdownRef.current); countdownRef.current = null; }
 
-    const now = new Date();
-    const rec = {
-      reference:       `TXE-${now.getFullYear()}-${Math.floor(100000 + Math.random() * 900000)}`,
+    const reference = `TXE-${new Date().getFullYear()}-${Math.floor(100000 + Math.random() * 900000)}`;
+    const payload = {
+      reference,
       amountNaira:     calculation.totalAmountDueNaira,
       taxNaira:        calculation.totalTaxNaira,
       serviceFeeNaira: calculation.serviceFeeNaira,
       method:          paymentMethod,
-      paidAt:          now.toISOString(),
+      paidAt:          new Date().toISOString(),
       statementSource: parsedStatement?.bank || "Manual estimate",
       identity:        bvnProfile?.bvn || maskedIdentity(),
       identityType,
       name:            bvnProfile?.fullName || "Verified Taxpayer",
     };
-    // Store in ref so the timeout callback always reads a fresh copy
-    pendingPayRef.current = rec;
 
     setPaymentLoading(true);
     setProcessingStep(0);
     setScreenState("paymentProcessing");
-
-    // Step ticker
-    let step = 0;
-    payTickerRef.current = setInterval(() => {
-      step += 1;
-      if (step < PROCESSING_STEPS.length) {
-        setProcessingStep(step);
-      } else {
-        clearInterval(payTickerRef.current);
-        payTickerRef.current = null;
-      }
-    }, 600);
-
-    // Final transition — try-finally GUARANTEES navigation even if saveToHistory throws
-    payTimerRef.current = setTimeout(() => {
-      if (payTickerRef.current) { clearInterval(payTickerRef.current); payTickerRef.current = null; }
-      try {
-        const saved = pendingPayRef.current || rec; // fallback to local var if ref cleared
-        pendingPayRef.current = null;
-        setPaymentRecord(saved);
-        saveToHistory(saved);
-      } catch (_) {
-        // Non-fatal — history save failed, but we still navigate
-      } finally {
-        setPaymentLoading(false);
-        setScreenState("paymentSuccess");  // ALWAYS runs
-      }
-    }, 3400);
+    setProcessingPayload(payload);  // ← triggers useEffect via unique reference
   };
 
   const paymentMethodLabel = (value) => {
