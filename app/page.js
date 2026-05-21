@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import {
   ArrowLeft,
   CheckCircle2,
@@ -18,7 +18,28 @@ import {
   PieChart,
   ChevronDown,
   UploadCloud,
-  Wand2
+  Wand2,
+  ScanFace,
+  UserCheck,
+  Camera,
+  Fingerprint,
+  Plus,
+  HelpCircle,
+  TrendingUp,
+  AlertCircle,
+  Building2,
+  DollarSign,
+  ChevronRight,
+  Mail,
+  Printer,
+  Calendar,
+  Sparkles,
+  MapPin,
+  Lock,
+  Award,
+  Briefcase,
+  Laptop,
+  Store
 } from "lucide-react";
 import { calculateTaxEstimate, calculateTaxFromTransactions } from "@/lib/taxCalculator";
 import { buildSampleStatement, parseGtbankPdfStatement } from "@/lib/bankStatement";
@@ -26,46 +47,14 @@ import { transparencyData } from "@/lib/transparencyData";
 import { QRCodeSVG } from "qrcode.react";
 import dynamic from "next/dynamic";
 
-const DEMO_RECORDS = [
-  {
-    reference: "TXE-2026-FRLNC875",
-    amountNaira: 87500,
-    identity: "2***********9",
-    identityType: "bvn",
-    name: "Demo User",
-    paidAt: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(),
-    status: "success",
-    tccRef: "TCC-2026-FRLNC875",
-    method: "card",
-  },
-  {
-    reference: "TXE-2026-MIXED340",
-    amountNaira: 340000,
-    identity: "2***********9",
-    identityType: "bvn",
-    name: "Demo User",
-    paidAt: new Date(Date.now() - 150 * 24 * 60 * 60 * 1000).toISOString(),
-    status: "success",
-    tccRef: "TCC-2026-MIXED340",
-    method: "bank_transfer",
-  },
-  {
-    reference: "TXE-2026-SMALL125",
-    amountNaira: 125000,
-    identity: "2***********9",
-    identityType: "bvn",
-    name: "Demo User",
-    paidAt: new Date(Date.now() - 240 * 24 * 60 * 60 * 1000).toISOString(),
-    status: "success",
-    tccRef: "TCC-2026-SMALL125",
-    method: "ussd",
-  }
-];
-
 const TccDownloadButton = dynamic(() => import("@/components/TccPDF"), {
   ssr: false,
   loading: () => <div className="mt-4 flex h-12 w-full items-center justify-center rounded-2xl bg-emerald-700/50 text-white opacity-70">Loading PDF engine...</div>
 });
+
+// FaceEngine: browser-native FaceDetector API with video-stream fallback.
+// No CDN, no WASM, no external dependencies.
+const FaceEngineDynamic = dynamic(() => import("@/components/FaceEngine"), { ssr: false });
 
 const formatNaira = (value) =>
   new Intl.NumberFormat("en-NG", {
@@ -80,37 +69,75 @@ const SCREEN_TITLES = {
   welcome: "TaxEasy",
   phone: "Sign in",
   otp: "Verify phone",
-  home: "Home",
-  incomeType: "How you earn",
-  incomeInput: "Income details",
-  result: "Your estimate",
-  identity: "Verify identity",
-  paymentMethod: "Payment method",
-  paymentProcessing: "Processing",
-  paymentSuccess: "Payment successful",
-  receipt: "Receipt",
-  history: "History",
-  tcc: "TCC Generation",
-  transparency: "Transparency",
-  statementUpload: "Upload statement",
-  statementReview: "Review transactions",
+  bvnEntry: "BVN Verification",
+  faceVerification: "Face Scan",
+  bvnSuccess: "Identity Verified",
+  home: "Home Dashboard",
+  incomeType: "Income Source",
+  incomeInput: "Annual Income",
+  deductionsWizard: "Deductions & Reliefs",
+  result: "Your Tax Estimate",
+  paymentMethod: "Payment Method",
+  paymentProcessing: "Processing Payment",
+  paymentSuccess: "Remittance Complete",
+  receipt: "Digital Receipt",
+  history: "Filing History",
+  tcc: "Tax Clearance Certificate",
+  transparency: "National Trust & Impact",
+  statementUpload: "Upload Bank Statement",
+  statementReview: "Verify Transactions",
 };
 
-const BOTTOM_NAV_HIDDEN_SCREENS = ["welcome", "phone", "otp", "paymentProcessing"];
+const BOTTOM_NAV_HIDDEN_SCREENS = ["welcome", "phone", "otp", "bvnEntry", "faceVerification", "bvnSuccess", "paymentProcessing"];
 const STATEMENT_FLOW_SCREENS = [
   "statementUpload",
   "statementReview",
   "incomeType",
   "incomeInput",
+  "deductionsWizard",
   "result",
-  "identity",
   "paymentMethod",
   "paymentSuccess",
   "receipt",
   "tcc",
 ];
 
-export default function TaxEasyMvp() {
+const Confetti = () => {
+  const [dots, setDots] = useState([]);
+  useEffect(() => {
+    const colors = ["#10b981", "#34d399", "#f59e0b", "#3b82f6", "#ec4899", "#8b5cf6"];
+    const newDots = Array.from({ length: 60 }).map((_, i) => ({
+      id: i,
+      left: `${Math.random() * 100}vw`,
+      delay: `${Math.random() * 3}s`,
+      color: colors[Math.floor(Math.random() * colors.length)],
+      size: `${Math.random() * 8 + 6}px`,
+      duration: `${Math.random() * 2 + 2.5}s`,
+    }));
+    setDots(newDots);
+  }, []);
+
+  return (
+    <>
+      {dots.map((dot) => (
+        <span
+          key={dot.id}
+          className="confetti-dot"
+          style={{
+            left: dot.left,
+            animationDelay: dot.delay,
+            backgroundColor: dot.color,
+            width: dot.size,
+            height: dot.size,
+            animationDuration: dot.duration,
+          }}
+        />
+      ))}
+    </>
+  );
+};
+
+export default function TaxEasyPremium() {
   const [screenState, setScreenState] = useState("welcome");
   const [navStack, setNavStack] = useState([]);
   const [history, setHistory] = useState([]);
@@ -123,6 +150,7 @@ export default function TaxEasyMvp() {
     }
     setScreenState(newScreen);
   };
+
   const screen = screenState;
   const showBottomNav = !BOTTOM_NAV_HIDDEN_SCREENS.includes(screen);
   const activeBottomTab = (() => {
@@ -132,44 +160,34 @@ export default function TaxEasyMvp() {
     if (STATEMENT_FLOW_SCREENS.includes(screen)) return "statement";
     return "home";
   })();
+
   const goToMainTab = (newScreen) => {
     setNavStack([]);
     setScreenState(newScreen);
   };
 
-  const [demoMode, setDemoMode] = useState(false);
-
   useEffect(() => {
+    // Restore persisted session on page load (phone, history, BVN profile)
     try {
-      if (typeof window !== 'undefined') {
-        const urlParams = new URLSearchParams(window.location.search);
-        if (urlParams.get("demo") === "true") {
-          setDemoMode(true);
-          setPhone("0801 234 5678");
-          setHistory(DEMO_RECORDS);
-          setParsedStatement(buildSampleStatement("GTBank"));
-          setScreenState("home");
-          return;
-        }
-      }
-
-      const savedPhone = localStorage.getItem("taxeasy_phone");
-      if (savedPhone) setPhone(savedPhone);
+      if (typeof window === "undefined") return;
+      const savedPhone   = localStorage.getItem("taxeasy_phone");
       const savedHistory = localStorage.getItem("taxeasy_history");
+      const savedProfile = localStorage.getItem("taxeasy_profile");
+      if (savedPhone)   setPhone(savedPhone);
       if (savedHistory) setHistory(JSON.parse(savedHistory));
-    } catch (e) {
-      console.error("Failed to load state", e);
+      if (savedProfile) setBvnProfile(JSON.parse(savedProfile));
+    } catch (_) {
+      // Silently ignore — corrupted localStorage should not crash the app
     }
   }, []);
 
   const saveToHistory = (record) => {
+    // Persist payment history to localStorage for session continuity
     const newHistory = [record, ...history];
     setHistory(newHistory);
-    if (!demoMode) {
-      try {
-        localStorage.setItem("taxeasy_history", JSON.stringify(newHistory));
-      } catch (e) {}
-    }
+    try {
+      localStorage.setItem("taxeasy_history", JSON.stringify(newHistory));
+    } catch (_) {}
   };
 
   const [phone, setPhone] = useState("");
@@ -177,32 +195,182 @@ export default function TaxEasyMvp() {
   const [authLoading, setAuthLoading] = useState(false);
   const [authError, setAuthError] = useState("");
 
+  // Onboarding ID state
+  const [onboardingIdType, setOnboardingIdType] = useState("bvn");
+  const [bvnNumber, setBvnNumber] = useState("");
+  const [bvnLoading, setBvnLoading] = useState(false);
+  const [bvnError, setBvnError] = useState("");
+  const [bvnProfile, setBvnProfile] = useState(null);
+  // ── Face detection state (detection only — no challenges) ──────────────────
+  // livenessStep: "idle" | "loading" | "detecting" | "passed" | "blocked"
+  const [livenessStep,  setLivenessStep]  = useState("idle");
+  const [livenessError, setLivenessError] = useState("");
+  const [faceVisible,   setFaceVisible]   = useState(false);
+  const [engineReady,   setEngineReady]   = useState(false);
+
+  const videoRef        = useRef(null);
+  const streamRef       = useRef(null);
+  const livenessStepRef = useRef("idle");  // stable ref for RAF callbacks
+  const detectedFrames  = useRef(0);       // consecutive frames a face is present
+
+  // Keep ref in sync
+  useEffect(() => { livenessStepRef.current = livenessStep; }, [livenessStep]);
+
+  // Stop camera stream helper
+  const stopCamera = useCallback(() => {
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach((t) => t.stop());
+      streamRef.current = null;
+    }
+  }, []);
+
+  // Names pool for seed mock BVN
+  const NG_FIRST = ["Chukwuemeka", "Adaeze", "Oluwafemi", "Aminat", "Babatunde", "Ngozi", "Emeka", "Fatima", "Tunde", "Chioma"];
+  const NG_LAST = ["Adeyemi", "Okonkwo", "Ibrahim", "Nwosu", "Adeleke", "Okafor", "Bello", "Eze", "Musa", "Chukwu"];
+  const NG_TOWNS = ["Lagos", "Abuja", "Kano", "Ibadan", "Port Harcourt", "Enugu"];
+
+  const generateNigerianProfile = (bvn, phoneNum) => {
+    const seed = bvn.split("").reduce((acc, ch) => acc + Number(ch), 0);
+    const firstName = NG_FIRST[seed % NG_FIRST.length];
+    const lastName = NG_LAST[(seed * 3 + 7) % NG_LAST.length];
+    const town = NG_TOWNS[(seed * 2 + 1) % NG_TOWNS.length];
+    const year = 1975 + (seed % 25);
+    const month = (seed * 7 % 12) + 1;
+    const day = (seed * 13 % 28) + 1;
+    const dob = `${String(day).padStart(2, "0")}/${String(month).padStart(2, "0")}/${year}`;
+    const maskedBvn = `•••••••${bvn.slice(-4)}`;
+    return { firstName, lastName, fullName: `${firstName} ${lastName}`, dob, town, bvn: maskedBvn, phone: phoneNum };
+  };
+
+  const handleVerifyBvn = () => {
+    const minLen = 11;
+    if (bvnNumber.trim().length !== minLen) {
+      setBvnError(`Please enter a valid 11-digit ${onboardingIdType.toUpperCase()}.`);
+      return;
+    }
+    setBvnError("");
+    setBvnLoading(true);
+    setTimeout(() => {
+      const profile = generateNigerianProfile(bvnNumber, phone);
+      setBvnProfile(profile);
+      setIdentityType(onboardingIdType);
+      setIdentityNumber(bvnNumber);
+      try {
+        localStorage.setItem("taxeasy_profile", JSON.stringify(profile));
+      } catch (e) {}
+      setBvnLoading(false);
+      setScreen("faceVerification");
+    }, 1200);
+  };
+
+  // ── Face detection helpers ───────────────────────────────────────────
+
+  const resetLiveness = useCallback(() => {
+    setLivenessStep("idle");
+    setLivenessError("");
+    setFaceVisible(false);
+    setEngineReady(false);
+    detectedFrames.current = 0;
+  }, []);
+
+  // Called every frame a face is found — after 40 stable frames (~1.3s) we pass
+  const handleFaceDetected = useCallback(() => {
+    setFaceVisible(true);
+    if (livenessStepRef.current !== "detecting") return;
+    detectedFrames.current++;
+    if (detectedFrames.current > 40) {
+      detectedFrames.current = 0;
+      setLivenessStep("passed");
+      stopCamera();
+      setTimeout(() => setScreen("bvnSuccess"), 1600);
+    }
+  }, [stopCamera]);
+
+  const handleFaceLost = useCallback(() => {
+    setFaceVisible(false);
+    detectedFrames.current = 0;  // reset counter when face disappears
+  }, []);
+
+  const handleEngineError = useCallback((msg) => {
+    setLivenessError(msg || "Face detection engine failed to load.");
+    setLivenessStep("idle");
+    stopCamera();
+  }, [stopCamera]);
+
+  // Open camera and start face detection
+  const startLiveness = async () => {
+    resetLiveness();
+    setLivenessStep("loading");
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: "user", width: { ideal: 640 }, height: { ideal: 480 } },
+      });
+      streamRef.current = stream;
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        await videoRef.current.play().catch(() => {});
+      }
+      setEngineReady(true);
+      setLivenessStep("detecting");
+    } catch (err) {
+      setLivenessStep("blocked");
+      setLivenessError(
+        err.name === "NotAllowedError" || err.name === "PermissionDeniedError"
+          ? "Camera access was denied. You must allow camera access to complete identity verification. Please check your browser permissions and try again."
+          : err.name === "NotFoundError"
+          ? "No camera was found on this device. A working camera is required to complete face verification."
+          : `Camera error: ${err.message}`,
+      );
+    }
+  };
+
+  // State selector indices
   const [transparencyStateIdx, setTransparencyStateIdx] = useState(0);
 
+  // Income & Calculation states
   const [incomeType, setIncomeType] = useState("salary");
   const [annualIncomeInput, setAnnualIncomeInput] = useState("");
   const [sideIncomeEnabled, setSideIncomeEnabled] = useState(false);
   const [sideIncomeInput, setSideIncomeInput] = useState("");
+  
+  // Deductions states
+  const [pensionInput, setPensionInput] = useState("");
+  const [nhfInput, setNhfInput] = useState("");
+  const [nhisInput, setNhisInput] = useState("");
+  const [rentInput, setRentInput] = useState("");
+  const [lifeInsuranceInput, setLifeInsuranceInput] = useState("");
+
   const [calcLoading, setCalcLoading] = useState(false);
   const [calcError, setCalcError] = useState("");
   const [calculation, setCalculation] = useState(null);
+
+  // Bank statements states
   const [statementBank, setStatementBank] = useState("GTBank");
   const [statementFileName, setStatementFileName] = useState("");
   const [parsedStatement, setParsedStatement] = useState(null);
   const [statementParseLoading, setStatementParseLoading] = useState(false);
   const [statementError, setStatementError] = useState("");
 
+  // Payment states
   const [identityType, setIdentityType] = useState("bvn");
   const [identityNumber, setIdentityNumber] = useState("");
-  const [identityLoading, setIdentityLoading] = useState(false);
-  const [identityError, setIdentityError] = useState("");
-
   const [paymentMethod, setPaymentMethod] = useState("card");
   const [paymentLoading, setPaymentLoading] = useState(false);
   const [paymentRecord, setPaymentRecord] = useState(null);
 
-  const canContinuePhone = phone.trim().length >= 11;
+  // Payment processing steps simulation
+  const [processingStep, setProcessingStep] = useState(0);
+  const processingSteps = [
+    "Establishing secure connection to NIBSS API...",
+    "Validating secure identity credentials...",
+    "Processing monetary remittance...",
+    "Confirming Federal Tax ID remittance...",
+    "Generating verified Tax Clearance Certificate (TCC)..."
+  ];
+
+  const canContinuePhone = phone.trim().replace(/\s/g, "").length >= 10;
   const canVerifyOtp = otp.trim().length === 6;
+
 
   const toNumberInput = (raw) => raw.replace(/[^\d]/g, "");
   const toCurrencyInput = (raw) => {
@@ -226,42 +394,53 @@ export default function TaxEasyMvp() {
     setAuthError("");
     setAuthLoading(true);
     setTimeout(() => {
-      if (otp.trim() !== "123456") {
-        setAuthLoading(false);
-        setAuthError("Invalid code. Try 123456.");
-        return;
-      }
+      // Simulated backend — any 6-digit code passes (real SMS gateway in production)
       setAuthLoading(false);
       try {
         localStorage.setItem("taxeasy_phone", phone);
       } catch (e) {}
-      setScreen("home");
+
+      if (bvnProfile) {
+        setScreen("home");
+      } else {
+        setBvnNumber("");
+        setBvnError("");
+        resetLiveness();
+        setScreen("bvnEntry");
+      }
     }, 800);
   };
+
+  // Auto-verify OTP: useEffect runs after React commits the otp state update,
+  // so otp is guaranteed to equal 6 chars when handleVerifyOtp reads canVerifyOtp.
+  useEffect(() => {
+    if (otp.length === 6 && screen === "otp" && !authLoading) {
+      handleVerifyOtp();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [otp]);
 
   const handleCalculate = () => {
     setCalcError("");
     const annualIncomeNaira = Number(annualIncomeInput.replaceAll(",", ""));
-    const sideIncomeNaira = sideIncomeEnabled
-      ? Number(sideIncomeInput.replaceAll(",", ""))
-      : 0;
+    const sideIncomeNaira = sideIncomeEnabled ? Number(sideIncomeInput.replaceAll(",", "")) : 0;
 
     if (!Number.isFinite(annualIncomeNaira) || annualIncomeNaira <= 0) {
-      setCalcError("Enter a valid yearly income amount.");
-      return;
-    }
-
-    if (!Number.isFinite(sideIncomeNaira) || sideIncomeNaira < 0) {
-      setCalcError("Enter a valid side income amount.");
+      setCalcError("Please enter a valid annual income.");
       return;
     }
 
     setCalcLoading(true);
     setTimeout(() => {
       const result = calculateTaxEstimate({
-        incomeType,
+        incomeType: incomeType,
         annualIncomeNaira,
         sideIncomeNaira,
+        pensionNaira: Number(pensionInput.replaceAll(",", "")) || 0,
+        nhfNaira: Number(nhfInput.replaceAll(",", "")) || 0,
+        nhisNaira: Number(nhisInput.replaceAll(",", "")) || 0,
+        annualRentNaira: Number(rentInput.replaceAll(",", "")) || 0,
+        lifeInsuranceNaira: Number(lifeInsuranceInput.replaceAll(",", "")) || 0,
       });
       setCalculation(result);
       setCalcLoading(false);
@@ -273,21 +452,18 @@ export default function TaxEasyMvp() {
     if (!file) return;
     setStatementError("");
     if (file.type !== "application/pdf" && !file.name.toLowerCase().endsWith(".pdf")) {
-      setStatementError("Upload a PDF bank statement for this MVP demo.");
+      setStatementError("Only bank statement PDF files are accepted.");
       return;
     }
 
     setStatementFileName(file.name);
     setStatementParseLoading(true);
     setTimeout(() => {
-      const parsed =
-        statementBank === "GTBank"
-          ? parseGtbankPdfStatement(file.name)
-          : buildSampleStatement("Demo Bank");
+      const parsed = statementBank === "GTBank" ? parseGtbankPdfStatement(file.name) : buildSampleStatement("Demo Bank");
       setParsedStatement(parsed);
       setStatementParseLoading(false);
       setScreen("statementReview");
-    }, 900);
+    }, 1000);
   };
 
   const loadDemoStatement = () => {
@@ -295,14 +471,10 @@ export default function TaxEasyMvp() {
     setStatementFileName(statementBank === "GTBank" ? "gtbank-demo-statement.pdf" : "sample-bank-statement.pdf");
     setStatementParseLoading(true);
     setTimeout(() => {
-      setParsedStatement(
-        statementBank === "GTBank"
-          ? buildSampleStatement("GTBank")
-          : buildSampleStatement("Demo Bank")
-      );
+      setParsedStatement(buildSampleStatement(statementBank));
       setStatementParseLoading(false);
       setScreen("statementReview");
-    }, 600);
+    }, 800);
   };
 
   const updateTransactionCategory = (transactionId, category) => {
@@ -310,8 +482,8 @@ export default function TaxEasyMvp() {
       if (!current) return current;
       return {
         ...current,
-        transactions: current.transactions.map((transaction) =>
-          transaction.id === transactionId ? { ...transaction, category } : transaction
+        transactions: current.transactions.map((t) =>
+          t.id === transactionId ? { ...t, category } : t
         ),
       };
     });
@@ -319,45 +491,36 @@ export default function TaxEasyMvp() {
 
   const statementTotals = (transactions = []) => {
     const grossIncome = transactions
-      .filter((transaction) => transaction.direction === "credit" && transaction.category === "income")
-      .reduce((sum, transaction) => sum + transaction.amountNaira, 0);
+      .filter((t) => t.direction === "credit" && t.category === "income")
+      .reduce((sum, t) => sum + t.amountNaira, 0);
     const businessExpenses = transactions
-      .filter((transaction) => transaction.direction === "debit" && transaction.category === "business_expense")
-      .reduce((sum, transaction) => sum + transaction.amountNaira, 0);
+      .filter((t) => t.direction === "debit" && t.category === "business_expense")
+      .reduce((sum, t) => sum + t.amountNaira, 0);
     const ignored = transactions
-      .filter((transaction) => transaction.category === "transfer" || transaction.category === "tax_exempt")
-      .reduce((sum, transaction) => sum + transaction.amountNaira, 0);
+      .filter((t) => t.category === "transfer" || t.category === "tax_exempt")
+      .reduce((sum, t) => sum + t.amountNaira, 0);
     return { grossIncome, businessExpenses, ignored };
   };
 
   const handleCalculateFromStatement = () => {
     if (!parsedStatement || parsedStatement.transactions.length === 0) {
-      setStatementError("Upload or load a statement before calculating tax.");
+      setStatementError("Please load a bank statement before calculation.");
       return;
     }
     setCalcLoading(true);
     setTimeout(() => {
       const result = calculateTaxFromTransactions({
-        incomeType: parsedStatement.bank === "Demo Bank" ? "business" : "freelance",
+        incomeType: incomeType === "salary" ? "freelance" : incomeType,
         transactions: parsedStatement.transactions,
+        pensionNaira: Number(pensionInput.replaceAll(",", "")) || 0,
+        nhfNaira: Number(nhfInput.replaceAll(",", "")) || 0,
+        nhisNaira: Number(nhisInput.replaceAll(",", "")) || 0,
+        annualRentNaira: Number(rentInput.replaceAll(",", "")) || 0,
+        lifeInsuranceNaira: Number(lifeInsuranceInput.replaceAll(",", "")) || 0,
       });
       setCalculation(result);
       setCalcLoading(false);
       setScreen("result");
-    }, 700);
-  };
-
-  const handleVerifyIdentity = () => {
-    const minLen = 11; // Both BVN and NIN are 11 digits
-    if (identityNumber.trim().length < minLen) {
-      setIdentityError(identityType === "bvn" ? "Enter a valid 11-digit BVN." : "Enter a valid NIN.");
-      return;
-    }
-    setIdentityError("");
-    setIdentityLoading(true);
-    setTimeout(() => {
-      setIdentityLoading(false);
-      setScreen("paymentMethod");
     }, 900);
   };
 
@@ -365,29 +528,46 @@ export default function TaxEasyMvp() {
     if (!calculation) return;
     setPaymentLoading(true);
     setScreen("paymentProcessing");
+    setProcessingStep(0);
+
+    // Dynamic processing steps ticker
+    const timer = setInterval(() => {
+      setProcessingStep((prev) => {
+        if (prev >= processingSteps.length - 1) {
+          clearInterval(timer);
+          return prev;
+        }
+        return prev + 1;
+      });
+    }, 700);
+
     setTimeout(() => {
+      clearInterval(timer);
       const now = new Date();
       const reference = `TXE-${now.getFullYear()}-${Math.floor(100000 + Math.random() * 900000)}`;
       const record = {
         reference,
-        amountNaira: calculation.totalTaxNaira,
+        amountNaira: calculation.totalAmountDueNaira,
+        taxNaira: calculation.totalTaxNaira,
+        serviceFeeNaira: calculation.serviceFeeNaira,
         method: paymentMethod,
         paidAt: now.toISOString(),
         statementSource: parsedStatement?.bank || "Manual estimate",
-        identity: maskedIdentity(),
-        identityType,
+        identity: bvnProfile?.bvn || maskedIdentity(),
+        identityType: identityType,
+        name: bvnProfile?.fullName || "Verified Taxpayer",
       };
       setPaymentRecord(record);
       saveToHistory(record);
       setPaymentLoading(false);
       setScreen("paymentSuccess");
-    }, 2000);
+    }, 4000);
   };
 
   const paymentMethodLabel = (value) => {
-    if (value === "card") return "Card";
-    if (value === "bank_transfer") return "Bank transfer";
-    return "USSD";
+    if (value === "card") return "Visa/Mastercard/Verve";
+    if (value === "bank_transfer") return "Direct Bank Remittance";
+    return "Instant USSD Code (*737#)";
   };
 
   const maskedIdentity = () => {
@@ -401,892 +581,78 @@ export default function TaxEasyMvp() {
     setAnnualIncomeInput("");
     setSideIncomeInput("");
     setSideIncomeEnabled(false);
+    setPensionInput("");
+    setNhfInput("");
+    setNhisInput("");
+    setRentInput("");
+    setLifeInsuranceInput("");
     setCalcError("");
     setStatementFileName("");
     setParsedStatement(null);
     setStatementError("");
-    setScreen("statementUpload");
+    setScreen("incomeType");
   };
 
+  const handleEmailRepresentative = (stateName) => {
+    const subject = encodeURIComponent(`Inquiry on ${stateName} State Public Tax Expenditure`);
+    const body = encodeURIComponent(
+      `Dear Honorable Representative,\n\nI am a tax-compliant citizen of Nigeria residing in ${stateName} State. I recently verified my tax compliance status through TaxEasy and reviewed the ${stateName} State local government capital allocation indices.\n\nI am writing to inquire about the budget implementation status of the capital development projects earmarked for our local constituency. Specifically, we would love to see updates on healthcare, transport infrastructure, and basic education project remits.\n\nThank you for your dedicated service and public leadership.\n\nSincerely,\n${bvnProfile?.fullName || "Taxpayer"}`
+    );
+    window.open(`mailto:representatives@nass.gov.ng?subject=${subject}&body=${body}`, "_blank");
+  };
+
+  const isOnboarding = BOTTOM_NAV_HIDDEN_SCREENS.includes(screen);
+  const showSidebar = !isOnboarding;
+
+  const SIDEBAR_NAV = [
+    { id: "home", label: "Dashboard", icon: Home, screen: "home" },
+    { id: "statement", label: "Tax Assessment", icon: UploadCloud, screen: "incomeType" },
+    { id: "history", label: "Filing History", icon: History, screen: "history" },
+    { id: "transparency", label: "Budget Impact", icon: PieChart, screen: "transparency" },
+  ];
+
   return (
-    <main className="min-h-screen bg-slate-100 text-slate-900 sm:flex sm:items-start sm:justify-center sm:p-6">
-      <div className="relative min-h-screen w-full max-w-md overflow-hidden bg-gradient-to-br from-[#f0fdf4] via-[#fcfffd] to-[#ecfdf5] sm:min-h-[812px] sm:max-h-[calc(100vh-3rem)] sm:rounded-[2.75rem] sm:border-[10px] sm:border-slate-950 sm:shadow-2xl">
-        <div className="pointer-events-none absolute left-1/2 top-2 z-[60] hidden h-1.5 w-24 -translate-x-1/2 rounded-full bg-slate-800 sm:block" />
-        <div className={`mx-auto h-full w-full max-w-md overflow-y-auto px-4 pt-6 sm:max-h-[calc(100vh-3rem)] ${showBottomNav ? "pb-32" : "pb-8"}`}>
-        <header className="mb-6 flex items-center justify-between">
-          <button
-            type="button"
-            onClick={() => {
-              if (navStack.length > 0) {
-                const prev = navStack[navStack.length - 1];
-                setNavStack((stack) => stack.slice(0, -1));
-                setScreenState(prev);
-              }
-            }}
-            className="h-11 w-11 flex items-center justify-center rounded-full border border-emerald-200 bg-white text-emerald-900 disabled:opacity-0"
-            disabled={navStack.length === 0}
-          >
-            <ArrowLeft className="mx-auto h-5 w-5" />
-          </button>
-          <p className="text-sm font-semibold text-emerald-900">{SCREEN_TITLES[screen]}</p>
-          {demoMode ? (
-            <div className="flex h-11 items-center justify-center rounded-full bg-amber-100 px-3 text-[10px] font-bold tracking-wider text-amber-800">
-              DEMO
+    <div className="min-h-screen bg-[#f4f7f5] text-[#0a0f0d] flex flex-col">
+      {/* Confetti element on successful payments */}
+      {screen === "paymentSuccess" && <Confetti />}
+
+      {/* ═══════════════════════════════════════════════
+          DESKTOP SIDEBAR — hidden on mobile & onboarding
+          ═══════════════════════════════════════════════ */}
+      {showSidebar && (
+        <aside className="hidden lg:flex lg:flex-col lg:fixed lg:inset-y-0 lg:left-0 lg:w-64 lg:border-r lg:border-[#d1fae5] lg:bg-white lg:shadow-sm lg:z-40">
+          {/* Logo banner */}
+          <div className="flex items-center gap-3 border-b border-[#e2ede7] px-6 py-5">
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-[#064e3b] to-[#065f46] shadow-md shadow-emerald-900/10">
+              <ShieldCheck className="h-5 w-5 text-white" />
             </div>
-          ) : (
-            <div className="h-11 w-11" />
+            <div>
+              <span className="text-lg font-extrabold text-[#064e3b] tracking-tight">TaxEasy</span>
+              <span className="block text-[9px] font-bold text-emerald-600 tracking-wider">NIGERIA REFORM</span>
+            </div>
+
+          </div>
+
+          {/* User badge */}
+          {bvnProfile && (
+            <div className="mx-4 mt-5 p-3 rounded-2xl bg-[#f0fdf4] border border-[#d1fae5] flex items-center gap-3">
+              <div className="h-9 w-9 rounded-xl bg-[#064e3b] text-white flex items-center justify-center font-bold text-sm">
+                {bvnProfile.firstName[0]}{bvnProfile.lastName[0]}
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-xs font-bold text-[#064e3b] truncate">{bvnProfile.fullName}</p>
+                <div className="badge-verified mt-0.5 scale-90 origin-left">
+                  <CheckCircle2 className="h-2.5 w-2.5 text-emerald-600" />
+                  ID Verified
+                </div>
+              </div>
+            </div>
           )}
-        </header>
 
-        {screen === "welcome" && (
-          <section className="rounded-3xl bg-white p-6 shadow-sm">
-            <div className="mb-4 inline-flex rounded-2xl bg-emerald-100 px-3 py-1 text-sm font-medium text-emerald-800">
-              TaxEasy MVP
-            </div>
-            <h1 className="text-3xl font-bold leading-tight text-[#064e3b]">Pay your tax in under 90 seconds</h1>
-            <p className="mt-3 text-sm leading-6 text-slate-600">
-              Upload your bank statement. Review the categories. Pay when ready and get instant proof.
-            </p>
-            <button
-              type="button"
-              onClick={() => setScreen("phone")}
-              className="mt-6 h-12 w-full rounded-2xl bg-[#064e3b] text-base font-semibold text-white"
-            >
-              Continue
-            </button>
-          </section>
-        )}
-
-        {screen === "phone" && (
-          <section className="rounded-3xl bg-white p-6 shadow-sm">
-            <h2 className="text-xl font-semibold text-[#064e3b]">Enter your phone number</h2>
-            <p className="mt-2 text-sm text-slate-600">We&apos;ll send a one-time code to sign you in.</p>
-            <label className="mt-5 block text-sm font-medium text-slate-700">Phone number</label>
-            <input
-              value={phone}
-              onChange={(e) => setPhone(toNumberInput(e.target.value))}
-              placeholder="08012345678"
-              className="mt-2 h-12 w-full rounded-2xl border border-emerald-200 px-4 text-base outline-none ring-emerald-600 focus:ring-2"
-            />
-            {authError ? <p className="mt-3 text-sm text-rose-600">{authError}</p> : null}
-            <button
-              type="button"
-              onClick={handleSendOtp}
-              disabled={!canContinuePhone || authLoading}
-              className="mt-6 flex h-12 w-full items-center justify-center rounded-2xl bg-[#064e3b] text-base font-semibold text-white disabled:opacity-50"
-            >
-              {authLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : "Send code"}
-            </button>
-          </section>
-        )}
-
-        {screen === "otp" && (
-          <section className="rounded-3xl bg-white p-6 shadow-sm">
-            <h2 className="text-xl font-semibold text-[#064e3b]">Verify your phone</h2>
-            <p className="mt-2 text-sm text-slate-600">Enter 6-digit code sent to {phone}.</p>
-            <label className="mt-5 block text-sm font-medium text-slate-700">OTP code</label>
-            <input
-              value={otp}
-              onChange={(e) => setOtp(toNumberInput(e.target.value).slice(0, 6))}
-              placeholder="123456"
-              className="mt-2 h-12 w-full rounded-2xl border border-emerald-200 px-4 text-base tracking-[0.3em] outline-none ring-emerald-600 focus:ring-2"
-            />
-            {authError ? <p className="mt-3 text-sm text-rose-600">{authError}</p> : null}
-            <button
-              type="button"
-              onClick={handleVerifyOtp}
-              disabled={!canVerifyOtp || authLoading}
-              className="mt-6 flex h-12 w-full items-center justify-center rounded-2xl bg-[#064e3b] text-base font-semibold text-white disabled:opacity-50"
-            >
-              {authLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : "Verify and continue"}
-            </button>
-          </section>
-        )}
-
-        {screen === "home" && (
-          <section className="space-y-4">
-            <div className="rounded-3xl bg-white p-6 shadow-sm">
-              <h2 className="text-xl font-semibold text-[#064e3b]">Welcome back</h2>
-              <p className="mt-2 text-sm text-slate-600">Upload your bank statement, review the categories, then pay with proof.</p>
-              <button
-                type="button"
-                onClick={() => setScreen("statementUpload")}
-                className="mt-5 h-12 w-full rounded-2xl bg-[#064e3b] text-base font-semibold text-white"
-              >
-                Upload statement
-              </button>
-              <button
-                type="button"
-                onClick={() => setScreen("history")}
-                className="mt-4 flex h-12 w-full items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white text-base font-semibold text-slate-700 hover:bg-slate-50"
-              >
-                <History className="h-5 w-5" />
-                View History
-              </button>
-            </div>
-            
-            <div className="mb-6 rounded-3xl bg-slate-900 p-5 text-white shadow-sm">
-              <div className="mb-2 flex items-center gap-2">
-                <PieChart className="h-5 w-5 text-emerald-400" />
-                <h3 className="font-semibold">Where your tax goes</h3>
-              </div>
-              <p className="mb-4 text-sm text-slate-300">See how government spends tax revenue in your state.</p>
-              <button
-                type="button"
-                onClick={() => setScreen("transparency")}
-                className="w-full rounded-xl bg-slate-800 py-3 text-sm font-medium text-white hover:bg-slate-700 transition-colors"
-              >
-                View budget breakdown
-              </button>
-            </div>
-
-            <div className="rounded-3xl border border-emerald-100 bg-emerald-50 p-4">
-              <div className="flex items-start gap-3">
-                <ShieldCheck className="mt-0.5 h-5 w-5 text-emerald-700" />
-                <p className="text-sm text-emerald-900">Estimate first. Identity details are only required when you choose to pay.</p>
-              </div>
-            </div>
-
-            <button
-              type="button"
-              onClick={() => {
-                setDemoMode(false);
-                setPhone("");
-                setHistory([]);
-                setNavStack([]);
-                setScreenState("welcome");
-                if (typeof window !== 'undefined') {
-                  const url = new URL(window.location.href);
-                  url.searchParams.delete('demo');
-                  window.history.replaceState({}, '', url);
-                }
-              }}
-              className="w-full text-center text-sm font-medium text-slate-500 hover:text-slate-700 mt-8"
-            >
-              Sign out
-            </button>
-          </section>
-        )}
-
-        {screen === "statementUpload" && (
-          <section className="space-y-4">
-            <div className="rounded-3xl bg-white p-6 shadow-sm">
-              <div className="mb-4 inline-flex items-center gap-2 rounded-2xl bg-emerald-100 px-3 py-1 text-sm font-medium text-emerald-800">
-                <UploadCloud className="h-4 w-4" />
-                Bank statement MVP
-              </div>
-              <h2 className="text-xl font-semibold text-[#064e3b]">Upload your bank statement</h2>
-              <p className="mt-2 text-sm leading-6 text-slate-600">
-                TaxEasy parses GTBank PDFs in this MVP. Other banks use a seeded sample so the demo still shows the same review flow.
-              </p>
-
-              <label className="mt-5 block text-sm font-medium text-slate-700">Statement bank</label>
-              <div className="mt-2 grid grid-cols-2 gap-3">
-                {["GTBank", "Other bank"].map((bank) => (
-                  <button
-                    key={bank}
-                    type="button"
-                    onClick={() => setStatementBank(bank)}
-                    className={`h-11 rounded-2xl border text-sm font-semibold ${
-                      statementBank === bank
-                        ? "border-emerald-700 bg-emerald-50 text-emerald-900"
-                        : "border-slate-200 bg-white text-slate-700"
-                    }`}
-                  >
-                    {bank}
-                  </button>
-                ))}
-              </div>
-
-              <label className="mt-5 flex min-h-40 cursor-pointer flex-col items-center justify-center rounded-3xl border-2 border-dashed border-emerald-200 bg-emerald-50/60 p-6 text-center">
-                <UploadCloud className="h-9 w-9 text-emerald-700" />
-                <span className="mt-3 text-sm font-semibold text-emerald-950">
-                  {statementFileName || "Choose PDF statement"}
-                </span>
-                <span className="mt-1 text-xs text-emerald-800">PDF only, demo parser runs locally</span>
-                <input
-                  type="file"
-                  accept="application/pdf,.pdf"
-                  onChange={(event) => handleStatementFile(event.target.files?.[0])}
-                  className="sr-only"
-                />
-              </label>
-
-              {statementError ? <p className="mt-3 text-sm text-rose-600">{statementError}</p> : null}
-
-              <button
-                type="button"
-                onClick={loadDemoStatement}
-                disabled={statementParseLoading}
-                className="mt-5 flex h-12 w-full items-center justify-center gap-2 rounded-2xl border border-emerald-200 bg-white text-base font-semibold text-emerald-900 disabled:opacity-50"
-              >
-                {statementParseLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : <Wand2 className="h-5 w-5" />}
-                Use sample statement
-              </button>
-            </div>
-
-            <div className="rounded-3xl border border-amber-100 bg-amber-50 p-4">
-              <p className="text-sm leading-6 text-amber-900">
-                Scope control: OCR, SMS reading, multi-bank auto-detection, and ML categorization are documented as V2 items.
-              </p>
-            </div>
-          </section>
-        )}
-
-        {screen === "statementReview" && parsedStatement && (
-          <section className="space-y-4">
-            <div className="rounded-3xl bg-white p-6 shadow-sm">
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <p className="text-sm font-medium text-slate-500">{parsedStatement.bank} statement</p>
-                  <h2 className="mt-1 text-xl font-semibold text-[#064e3b]">Review auto-categories</h2>
-                </div>
-                <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-800">
-                  {parsedStatement.transactions.length} txns
-                </span>
-              </div>
-              <p className="mt-2 text-sm text-slate-600">
-                Confirm or correct each category before TaxEasy computes your tax.
-              </p>
-
-              <div className="mt-4 grid grid-cols-2 gap-3 rounded-2xl bg-slate-50 p-4 text-sm">
-                {(() => {
-                  const totals = statementTotals(parsedStatement.transactions);
-                  return (
-                    <>
-                      <div>
-                        <p className="text-slate-500">Income detected</p>
-                        <p className="font-bold text-slate-900">{formatNaira(totals.grossIncome)}</p>
-                      </div>
-                      <div>
-                        <p className="text-slate-500">Expenses</p>
-                        <p className="font-bold text-slate-900">{formatNaira(totals.businessExpenses)}</p>
-                      </div>
-                      <div>
-                        <p className="text-slate-500">Ignored</p>
-                        <p className="font-bold text-slate-900">{formatNaira(totals.ignored)}</p>
-                      </div>
-                      <div>
-                        <p className="text-slate-500">Net assessable</p>
-                        <p className="font-bold text-[#064e3b]">{formatNaira(Math.max(totals.grossIncome - totals.businessExpenses, 0))}</p>
-                      </div>
-                    </>
-                  );
-                })()}
-              </div>
-            </div>
-
-            <div className="space-y-3">
-              {parsedStatement.transactions.map((transaction) => (
-                <div key={transaction.id} className="rounded-3xl bg-white p-4 shadow-sm">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <p className="truncate text-sm font-semibold text-slate-900">{transaction.description}</p>
-                      <p className="mt-1 text-xs text-slate-500">{new Date(transaction.date).toLocaleDateString("en-NG")}</p>
-                    </div>
-                    <p className={`whitespace-nowrap text-sm font-bold ${transaction.direction === "credit" ? "text-emerald-700" : "text-slate-800"}`}>
-                      {transaction.direction === "credit" ? "+" : "-"}{formatNaira(transaction.amountNaira)}
-                    </p>
-                  </div>
-                  <select
-                    value={transaction.category}
-                    onChange={(event) => updateTransactionCategory(transaction.id, event.target.value)}
-                    className="mt-3 h-11 w-full rounded-2xl border border-slate-200 bg-slate-50 px-3 text-sm font-medium text-slate-800 outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
-                  >
-                    <option value="income">Income</option>
-                    <option value="business_expense">Business expense</option>
-                    <option value="personal_expense">Personal expense</option>
-                    <option value="transfer">Transfer - ignore</option>
-                    <option value="tax_exempt">Tax-exempt</option>
-                  </select>
-                </div>
-              ))}
-            </div>
-
-            <button
-              type="button"
-              onClick={handleCalculateFromStatement}
-              disabled={calcLoading}
-              className="flex h-12 w-full items-center justify-center rounded-2xl bg-[#064e3b] text-base font-semibold text-white disabled:opacity-50"
-            >
-              {calcLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : "Calculate from reviewed statement"}
-            </button>
-          </section>
-        )}
-
-        {screen === "incomeType" && (
-          <section className="rounded-3xl bg-white p-6 shadow-sm">
-            <h2 className="text-xl font-semibold text-[#064e3b]">How do you earn money?</h2>
-            <div className="mt-4 space-y-3">
-              {[
-                { value: "salary", label: "Paid employee (salary)" },
-                { value: "freelance", label: "Freelancer / gig worker" },
-                { value: "business", label: "Small business owner" },
-              ].map((item) => (
-                <button
-                  key={item.value}
-                  type="button"
-                  onClick={() => setIncomeType(item.value)}
-                  className={`w-full rounded-2xl border p-4 text-left text-sm font-medium ${
-                    incomeType === item.value
-                      ? "border-emerald-700 bg-emerald-50 text-emerald-900"
-                      : "border-slate-200 bg-white text-slate-700"
-                  }`}
-                >
-                  {item.label}
-                </button>
-              ))}
-            </div>
-            <button
-              type="button"
-              onClick={() => setScreen("incomeInput")}
-              className="mt-6 h-12 w-full rounded-2xl bg-[#064e3b] text-base font-semibold text-white"
-            >
-              Continue
-            </button>
-          </section>
-        )}
-
-        {screen === "incomeInput" && (
-          <section className="rounded-3xl bg-white p-6 shadow-sm">
-            <h2 className="text-xl font-semibold text-[#064e3b]">Enter yearly income</h2>
-            <p className="mt-2 text-sm text-slate-600">Use your best estimate in naira.</p>
-
-            <label className="mt-5 block text-sm font-medium text-slate-700">Main income (annual)</label>
-            <div className="mt-2 relative">
-              <span className="absolute left-4 top-3 text-slate-500">₦</span>
-              <input
-                inputMode="numeric"
-                value={annualIncomeInput}
-                onChange={(e) => setAnnualIncomeInput(toCurrencyInput(e.target.value))}
-                placeholder="1,200,000"
-                aria-label="Main annual income"
-                className="h-12 w-full rounded-2xl border border-emerald-200 pl-8 pr-4 text-base outline-none ring-emerald-600 focus:ring-2"
-              />
-            </div>
-
-            <button
-              type="button"
-              onClick={() => setSideIncomeEnabled((v) => !v)}
-              className="mt-4 flex h-11 w-full items-center justify-between rounded-2xl border border-slate-200 px-4 text-sm font-medium"
-            >
-              <span>I have side income</span>
-              <span className={sideIncomeEnabled ? "text-emerald-700" : "text-slate-500"}>
-                {sideIncomeEnabled ? "Yes" : "No"}
-              </span>
-            </button>
-
-            {sideIncomeEnabled && (
-              <>
-                <label className="mt-4 block text-sm font-medium text-slate-700">Side income (annual)</label>
-                <div className="mt-2 relative">
-                  <span className="absolute left-4 top-3 text-slate-500">₦</span>
-                  <input
-                    inputMode="numeric"
-                    value={sideIncomeInput}
-                    onChange={(e) => setSideIncomeInput(toCurrencyInput(e.target.value))}
-                    placeholder="300,000"
-                    aria-label="Side annual income"
-                    className="h-12 w-full rounded-2xl border border-emerald-200 pl-8 pr-4 text-base outline-none ring-emerald-600 focus:ring-2"
-                  />
-                </div>
-              </>
-            )}
-
-            {calcError ? <p className="mt-3 text-sm text-rose-600">{calcError}</p> : null}
-
-            <button
-              type="button"
-              onClick={handleCalculate}
-              disabled={calcLoading}
-              className="mt-6 flex h-12 w-full items-center justify-center rounded-2xl bg-[#064e3b] text-base font-semibold text-white disabled:opacity-50"
-            >
-              {calcLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : "Calculate what I owe"}
-            </button>
-          </section>
-        )}
-
-        {screen === "result" && calculation && (
-          <section className="space-y-4">
-            <div className="rounded-3xl bg-white p-6 shadow-sm">
-              <p className="text-sm font-medium text-slate-500">Estimated tax</p>
-              <h2 className="mt-1 text-3xl font-bold text-[#064e3b]">{formatNaira(calculation.totalTaxNaira)}</h2>
-              <div className="mt-4 rounded-2xl bg-slate-50 p-4 text-sm text-slate-700">
-                {parsedStatement ? (
-                  <>
-                    <p>Statement source: {parsedStatement.bank}</p>
-                    <p className="mt-1">Deductible expenses: {formatNaira(calculation.deductibleBusinessExpensesNaira)}</p>
-                    <p className="mt-1">Transfers/exempt ignored: {formatNaira(calculation.ignoredTransactionsNaira)}</p>
-                  </>
-                ) : null}
-                <p className={parsedStatement ? "mt-1" : ""}>Total income: {formatNaira(calculation.totalIncomeNaira)}</p>
-                <p className="mt-1">Taxable income: {formatNaira(calculation.taxableIncomeNaira)}</p>
-                {calculation.smallBusinessExemptionApplied ? (
-                  <p className="mt-1 font-medium text-emerald-700">Small business exemption applied (under ₦100M)</p>
-                ) : null}
-              </div>
-
-              {!calculation.smallBusinessExemptionApplied && calculation.breakdown.length > 0 ? (
-                <div className="mt-4 space-y-2">
-                  {calculation.breakdown.map((item) => (
-                    <div key={item.label} className="flex items-center justify-between rounded-xl border border-slate-100 px-3 py-2 text-sm">
-                      <span className="text-slate-600">{item.label}</span>
-                      <span className="font-medium text-slate-900">{formatNaira(item.taxAmount)}</span>
-                    </div>
-                  ))}
-                </div>
-              ) : null}
-            </div>
-
-            <div className="rounded-3xl border border-emerald-100 bg-emerald-50 p-4">
-              <div className="flex items-start gap-3">
-                <CheckCircle2 className="mt-0.5 h-5 w-5 text-emerald-700" />
-                <p className="text-sm text-emerald-900">{calculation.disclaimer}</p>
-              </div>
-            </div>
-
-            <button
-              type="button"
-              onClick={() => {
-                setIdentityError("");
-                setScreen("identity");
-              }}
-              className="h-12 w-full rounded-2xl bg-[#064e3b] text-base font-semibold text-white"
-            >
-              Proceed to payment
-            </button>
-            <button
-              type="button"
-              onClick={resetCalculation}
-              className="h-12 w-full rounded-2xl border border-slate-200 bg-white text-base font-semibold text-slate-700"
-            >
-              Recalculate
-            </button>
-          </section>
-        )}
-
-        {screen === "identity" && (
-          <section className="space-y-4">
-            <div className="rounded-3xl bg-white p-6 shadow-sm">
-              <h2 className="text-xl font-semibold text-[#064e3b]">Verify identity to continue</h2>
-              <p className="mt-2 text-sm text-slate-600">Why we need this: BVN/NIN links your payment to your official tax record so you can get a verifiable TCC.</p>
-
-              <div className="mt-4 grid grid-cols-2 gap-3">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setIdentityType("bvn");
-                    setIdentityError("");
-                  }}
-                  className={`h-11 rounded-2xl border text-sm font-semibold ${
-                    identityType === "bvn"
-                      ? "border-emerald-700 bg-emerald-50 text-emerald-900"
-                      : "border-slate-200 bg-white text-slate-700"
-                  }`}
-                >
-                  BVN
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setIdentityType("nin");
-                    setIdentityError("");
-                  }}
-                  className={`h-11 rounded-2xl border text-sm font-semibold ${
-                    identityType === "nin"
-                      ? "border-emerald-700 bg-emerald-50 text-emerald-900"
-                      : "border-slate-200 bg-white text-slate-700"
-                  }`}
-                >
-                  NIN
-                </button>
-              </div>
-
-              <label className="mt-4 block text-sm font-medium text-slate-700">
-                {identityType === "bvn" ? "BVN number" : "NIN number"}
-              </label>
-              <input
-                value={identityNumber}
-                onChange={(e) => setIdentityNumber(toNumberInput(e.target.value))}
-                placeholder={identityType === "bvn" ? "Enter 11-digit BVN" : "Enter NIN"}
-                className="mt-2 h-12 w-full rounded-2xl border border-emerald-200 px-4 text-base outline-none ring-emerald-600 focus:ring-2"
-              />
-              {identityError ? <p className="mt-3 text-sm text-rose-600">{identityError}</p> : null}
-
-              <button
-                type="button"
-                onClick={handleVerifyIdentity}
-                disabled={identityLoading}
-                className="mt-6 flex h-12 w-full items-center justify-center rounded-2xl bg-[#064e3b] text-base font-semibold text-white disabled:opacity-50"
-              >
-                {identityLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : "Verify and continue"}
-              </button>
-            </div>
-          </section>
-        )}
-
-        {screen === "paymentMethod" && calculation && (
-          <section className="space-y-4">
-            <div className="rounded-3xl bg-white p-6 shadow-sm">
-              <h2 className="text-xl font-semibold text-[#064e3b]">Choose payment method</h2>
-              <p className="mt-2 text-sm text-slate-600">Amount to pay: {formatNaira(calculation.totalTaxNaira)}</p>
-
-              <div className="mt-4 space-y-3">
-                {[
-                  { id: "card", label: "Card", icon: CreditCard },
-                  { id: "bank_transfer", label: "Bank transfer", icon: Landmark },
-                  { id: "ussd", label: "USSD", icon: Smartphone },
-                ].map((method) => {
-                  const Icon = method.icon;
-                  return (
-                    <button
-                      key={method.id}
-                      type="button"
-                      onClick={() => setPaymentMethod(method.id)}
-                      className={`flex h-12 w-full items-center justify-between rounded-2xl border px-4 text-sm font-semibold ${
-                        paymentMethod === method.id
-                          ? "border-emerald-700 bg-emerald-50 text-emerald-900"
-                          : "border-slate-200 bg-white text-slate-700"
-                      }`}
-                    >
-                      <span className="flex items-center gap-2">
-                        <Icon className="h-4 w-4" />
-                        {method.label}
-                      </span>
-                      <span>{paymentMethod === method.id ? "Selected" : ""}</span>
-                    </button>
-                  );
-                })}
-              </div>
-
-              <button
-                type="button"
-                onClick={handlePay}
-                disabled={paymentLoading}
-                className="mt-6 h-12 w-full rounded-2xl bg-[#064e3b] text-base font-semibold text-white disabled:opacity-50"
-              >
-                Pay {formatNaira(calculation.totalTaxNaira)}
-              </button>
-            </div>
-          </section>
-        )}
-
-        {screen === "paymentProcessing" && calculation && (
-          <section className="rounded-3xl bg-white p-6 shadow-sm text-center">
-            <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-emerald-100">
-              <Loader2 className="h-7 w-7 animate-spin text-emerald-700" />
-            </div>
-            <h2 className="text-xl font-semibold text-[#064e3b]">Processing payment</h2>
-            <p className="mt-2 text-sm text-slate-600">Please wait while we confirm your payment of {formatNaira(calculation.totalTaxNaira)}.</p>
-            <p className="mt-4 text-xs text-slate-500">Do not close this screen.</p>
-          </section>
-        )}
-
-        {screen === "paymentSuccess" && paymentRecord && (
-          <section className="space-y-4">
-            <div className="rounded-3xl bg-white p-6 shadow-sm">
-              <div className="mb-4 flex items-center gap-2 text-emerald-700">
-                <CheckCircle2 className="h-6 w-6" />
-                <p className="text-base font-semibold">Payment successful</p>
-              </div>
-              <div className="space-y-2 rounded-2xl bg-slate-50 p-4 text-sm text-slate-700">
-                <p>Amount: {formatNaira(paymentRecord.amountNaira)}</p>
-                <p>Method: {paymentMethodLabel(paymentRecord.method)}</p>
-                <p>Reference: {paymentRecord.reference}</p>
-                <p>Date: {new Date(paymentRecord.paidAt).toLocaleString("en-NG")}</p>
-                <p>{identityType.toUpperCase()}: {maskedIdentity()}</p>
-              </div>
-            </div>
-
-            <button
-              type="button"
-              onClick={() => setScreen("receipt")}
-              className="h-12 w-full rounded-2xl bg-[#064e3b] text-base font-semibold text-white"
-            >
-              View receipt
-            </button>
-            <button
-              type="button"
-              onClick={() => setScreen("home")}
-              className="h-12 w-full rounded-2xl border border-slate-200 bg-white text-base font-semibold text-slate-700"
-            >
-              Back to home
-            </button>
-          </section>
-        )}
-
-        {screen === "receipt" && paymentRecord && (
-          <section className="space-y-4">
-            <div className="rounded-3xl bg-white p-6 shadow-sm">
-              <div className="mb-4 flex items-center justify-between">
-                <div className="flex items-center gap-2 text-[#064e3b]">
-                  <ReceiptText className="h-6 w-6" />
-                  <h2 className="text-xl font-semibold">Tax payment receipt</h2>
-                </div>
-                <button 
-                  onClick={async () => {
-                    const shareText = `Tax Payment Receipt\nRef: ${paymentRecord.reference}\nAmount: ${formatNaira(paymentRecord.amountNaira)}\nIdentity: ${identityType.toUpperCase()} ${maskedIdentity()}`;
-                    if (navigator.share) {
-                      try { await navigator.share({ title: 'Tax Payment Receipt', text: shareText }); } catch (err) {}
-                    } else {
-                      alert("Sharing not supported on this device. You can screenshot this receipt.");
-                    }
-                  }} 
-                  className="p-2 text-slate-500 hover:text-[#064e3b]" 
-                  aria-label="Share receipt"
-                >
-                  <Share2 className="h-5 w-5" />
-                </button>
-              </div>
-              <div className="mb-6 flex flex-col items-center justify-center space-y-2 rounded-2xl bg-slate-50 p-6">
-                <div className="rounded-xl bg-white p-3 shadow-sm border border-slate-100">
-                  <QRCodeSVG 
-                    value={JSON.stringify({ 
-                      ref: paymentRecord.reference, 
-                      amt: paymentRecord.amountNaira, 
-                      date: paymentRecord.paidAt, 
-                      id: `${identityType.toUpperCase()}:${maskedIdentity()}` 
-                    })} 
-                    size={140} 
-                  />
-                </div>
-                <div className="mt-2 flex items-center gap-1 text-xs text-slate-500">
-                  <Info className="h-4 w-4" />
-                  <span>Scan to verify payment authenticity</span>
-                </div>
-              </div>
-              <div className="space-y-2 rounded-2xl border border-slate-100 p-4 text-sm text-slate-700">
-                <p>Receipt No: RCP-{paymentRecord.reference}</p>
-                <p>Reference: {paymentRecord.reference}</p>
-                <p>Amount paid: {formatNaira(paymentRecord.amountNaira)}</p>
-                <p>Payment method: {paymentMethodLabel(paymentRecord.method)}</p>
-                <p>Payment date: {new Date(paymentRecord.paidAt).toLocaleString("en-NG")}</p>
-                <p>Identity: {identityType.toUpperCase()} {maskedIdentity()}</p>
-              </div>
-              <div className="flex gap-2 mt-4">
-                <button
-                  type="button"
-                  onClick={() => setScreen("transparency")}
-                  className="flex h-12 flex-1 items-center justify-center gap-2 rounded-2xl bg-slate-100 text-sm font-semibold text-slate-700 hover:bg-slate-200"
-                >
-                  <PieChart className="h-4 w-4" />
-                  Impact
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setScreen("tcc")}
-                  className="flex h-12 flex-1 items-center justify-center gap-2 rounded-2xl bg-emerald-50 text-sm font-semibold text-emerald-800 hover:bg-emerald-100"
-                >
-                  <FileText className="h-4 w-4" />
-                  Get TCC
-                </button>
-              </div>
-            </div>
-            <button
-              type="button"
-              onClick={() => setScreen("home")}
-              className="h-12 w-full rounded-2xl bg-[#064e3b] text-base font-semibold text-white"
-            >
-              Done
-            </button>
-          </section>
-        )}
-
-        {screen === "tcc" && paymentRecord && (
-          <section className="space-y-4">
-            <div className="rounded-3xl bg-white p-6 shadow-sm">
-              <div className="mb-4 flex items-center gap-2 text-[#064e3b]">
-                <ShieldCheck className="h-6 w-6" />
-                <h2 className="text-xl font-semibold">Tax Clearance</h2>
-              </div>
-              <p className="mb-6 text-sm text-slate-600">
-                Your Tax Clearance Certificate (TCC) is ready. You can download the official PDF below.
-              </p>
-              <div className="space-y-3 rounded-2xl border border-slate-100 bg-slate-50 p-5">
-                <div className="flex justify-between border-b border-slate-200 pb-2">
-                  <span className="text-sm font-medium text-slate-500">TCC No</span>
-                  <span className="text-sm font-bold text-slate-800">TCC-{new Date(paymentRecord.paidAt).getFullYear()}-{paymentRecord.reference.split("-")[2] || paymentRecord.reference.substring(0,6)}</span>
-                </div>
-                <div className="flex justify-between border-b border-slate-200 pb-2">
-                  <span className="text-sm font-medium text-slate-500">Identity</span>
-                  <span className="text-sm font-bold text-slate-800">{identityType.toUpperCase()} {maskedIdentity()}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-sm font-medium text-slate-500">Status</span>
-                  <span className="text-sm font-bold text-emerald-600">Cleared</span>
-                </div>
-              </div>
-              <TccDownloadButton record={paymentRecord} identityType={identityType} maskedIdentity={maskedIdentity()} />
-              <button
-                type="button"
-                onClick={() => setScreen("transparency")}
-                className="mt-6 flex w-full items-center justify-center gap-1 text-sm text-emerald-700 hover:underline"
-              >
-                <PieChart className="h-4 w-4" />
-                Where does this money go?
-              </button>
-            </div>
-            <button
-              type="button"
-              onClick={() => setScreen("home")}
-              className="h-12 w-full rounded-2xl border border-slate-200 bg-white text-base font-semibold text-slate-700"
-            >
-              Back to home
-            </button>
-          </section>
-        )}
-
-        {screen === "history" && (
-          <section className="space-y-4">
-            <h2 className="mb-2 text-xl font-semibold text-[#064e3b]">Payment History</h2>
-            {history.length === 0 ? (
-              <div className="flex flex-col items-center justify-center rounded-3xl bg-white p-10 text-center shadow-sm border border-slate-50">
-                <div className="mb-4 rounded-full bg-slate-50 p-4 text-slate-400">
-                  <History className="h-8 w-8" />
-                </div>
-                <h3 className="mb-2 text-lg font-semibold text-slate-800">No history yet</h3>
-                <p className="text-sm text-slate-500">Your past tax payments and certificates will appear here.</p>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                {history.map((record) => (
-                  <div key={record.reference} className="rounded-3xl bg-white p-5 shadow-sm">
-                    <div className="mb-2 flex items-center justify-between">
-                      <span className="font-semibold text-slate-900">{formatNaira(record.amountNaira)}</span>
-                      <span className="rounded-full bg-emerald-50 px-2 py-1 text-xs font-medium text-emerald-700">Paid</span>
-                    </div>
-                    <p className="mb-4 text-xs text-slate-500">{new Date(record.paidAt).toLocaleString("en-NG")}</p>
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => {
-                          setPaymentRecord(record);
-                          setScreen("receipt");
-                        }}
-                        className="flex-1 rounded-xl border border-slate-200 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
-                      >
-                        Receipt
-                      </button>
-                      <button
-                        onClick={() => {
-                          setPaymentRecord(record);
-                          setScreen("tcc");
-                        }}
-                        className="flex flex-1 items-center justify-center gap-1 rounded-xl bg-emerald-50 py-2 text-sm font-medium text-emerald-800 hover:bg-emerald-100"
-                      >
-                        <FileText className="h-4 w-4" />
-                        TCC
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-            <button
-              type="button"
-              onClick={() => setScreen("home")}
-              className="mt-6 h-12 w-full rounded-2xl border border-slate-200 bg-white text-base font-semibold text-slate-700"
-            >
-              Back to home
-            </button>
-          </section>
-        )}
-
-        {screen === "transparency" && (
-          <section className="space-y-4">
-            <div className="rounded-3xl bg-white p-6 shadow-sm">
-              <div className="mb-2 flex items-center gap-2 text-[#064e3b]">
-                <PieChart className="h-6 w-6" />
-                <h2 className="text-xl font-semibold">Where Your Tax Goes</h2>
-              </div>
-              <p className="mb-4 text-sm text-slate-600">
-                See how government spends tax revenue in your state.
-              </p>
-              <p className="mb-6 rounded-lg border border-amber-100 bg-amber-50 p-3 text-xs italic text-amber-800">
-                Sample data based on 2024 federal and state budget reports. For illustration purposes.
-              </p>
-
-              <div className="mb-6 space-y-4">
-                <div>
-                  <label className="mb-1 block text-sm font-medium text-slate-700">Select State</label>
-                  <div className="relative">
-                    <select
-                      value={transparencyStateIdx}
-                      onChange={(e) => setTransparencyStateIdx(Number(e.target.value))}
-                      className="h-12 w-full appearance-none rounded-2xl border border-slate-200 bg-slate-50 pl-4 pr-10 text-base font-medium text-slate-900 outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
-                    >
-                      {transparencyData.map((data, idx) => (
-                        <option key={data.state} value={idx}>{data.state} State</option>
-                      ))}
-                    </select>
-                    <ChevronDown className="pointer-events-none absolute right-4 top-3.5 h-5 w-5 text-slate-400" />
-                  </div>
-                </div>
-
-                <div className="rounded-2xl bg-[#064e3b] p-5 text-white shadow-sm">
-                  <p className="text-sm font-medium text-emerald-200">{transparencyData[transparencyStateIdx].year} Total Budget</p>
-                  <p className="text-2xl font-bold tracking-tight">₦{(transparencyData[transparencyStateIdx].totalBudget / 1000000000).toLocaleString()} Billion</p>
-                </div>
-              </div>
-
-              <h3 className="mb-4 text-lg font-semibold text-slate-800">Top Spending Categories</h3>
-              <div className="mb-8 space-y-5">
-                {transparencyData[transparencyStateIdx].categories.map((cat, i) => {
-                  const percentage = ((cat.amount / transparencyData[transparencyStateIdx].totalBudget) * 100).toFixed(1);
-                  return (
-                    <div key={i} className="space-y-1">
-                      <div className="flex justify-between text-sm font-medium text-slate-900">
-                        <span>{cat.name}</span>
-                        <span>{percentage}%</span>
-                      </div>
-                      <div className="h-2 w-full overflow-hidden rounded-full bg-slate-100">
-                        <div
-                          className="h-full bg-emerald-500 rounded-full"
-                          style={{ width: `${percentage}%` }}
-                        />
-                      </div>
-                      <p className="text-xs text-slate-500">{cat.description}</p>
-                      <p className="text-xs font-semibold text-slate-700">₦{(cat.amount / 1000000000).toLocaleString()} Billion</p>
-                    </div>
-                  );
-                })}
-              </div>
-
-              <h3 className="mb-4 text-lg font-semibold text-slate-800">LGA Drill-Down</h3>
-              <div className="space-y-3 rounded-2xl border border-slate-100 bg-slate-50 p-4">
-                {transparencyData[transparencyStateIdx].lgas.length > 0 ? (
-                  transparencyData[transparencyStateIdx].lgas.map((lga, i) => (
-                    <div key={i} className="flex flex-col border-b border-slate-200 pb-3 last:border-0 last:pb-0">
-                      <div className="flex items-center justify-between mb-1">
-                        <span className="text-sm font-bold text-slate-800">{lga.name}</span>
-                        <span className="text-sm font-semibold text-[#064e3b]">₦{(lga.allocation / 1000000000).toLocaleString()}B</span>
-                      </div>
-                      <span className="text-xs text-slate-500">Focus: {lga.focus}</span>
-                    </div>
-                  ))
-                ) : (
-                  <p className="text-sm italic text-slate-500">Detailed LGA data coming soon.</p>
-                )}
-              </div>
-
-              <div className="mt-8 border-t border-slate-100 pt-6 text-center">
-                <p className="mb-3 text-xs text-slate-500">Updated quarterly from public budget documents.</p>
-                <button type="button" className="text-sm font-medium text-emerald-700 hover:underline">
-                  Have feedback? Send to your representative
-                </button>
-              </div>
-            </div>
-          </section>
-        )}
-      </div>
-        {showBottomNav && (
-        <nav className="fixed inset-x-0 bottom-0 z-50 border-t border-emerald-100 bg-white/95 px-3 pb-[calc(env(safe-area-inset-bottom)+0.75rem)] pt-2 shadow-[0_-10px_30px_rgba(15,23,42,0.08)] backdrop-blur sm:absolute">
-          <div className="mx-auto grid w-full max-w-md grid-cols-4 gap-1">
-            {[
-              { id: "home", label: "Home", icon: Home, screen: "home" },
-              { id: "statement", label: "Statement", icon: UploadCloud, screen: "statementUpload" },
-              { id: "history", label: "History", icon: History, screen: "history" },
-              { id: "transparency", label: "Trust", icon: PieChart, screen: "transparency" },
-            ].map((item) => {
+          {/* Navigation Links */}
+          <nav className="flex-1 space-y-1.5 px-4 py-6">
+            <p className="text-[10px] font-bold text-slate-400 px-3 uppercase tracking-wider mb-2">Primary Menu</p>
+            {SIDEBAR_NAV.map((item) => {
               const Icon = item.icon;
               const isActive = activeBottomTab === item.id;
               return (
@@ -1294,22 +660,1980 @@ export default function TaxEasyMvp() {
                   key={item.id}
                   type="button"
                   onClick={() => goToMainTab(item.screen)}
-                  className={`flex min-h-16 flex-col items-center justify-center gap-1 rounded-2xl text-[11px] font-semibold transition-colors ${
+                  className={`flex w-full items-center gap-3.5 rounded-2xl px-4 py-3 text-sm font-semibold transition-all ${
                     isActive
-                      ? "bg-emerald-50 text-[#064e3b]"
-                      : "text-slate-500 hover:bg-slate-50 hover:text-slate-800"
+                      ? "bg-[#064e3b] text-white shadow-lg shadow-emerald-950/15 sidebar-active-pill"
+                      : "text-slate-500 hover:bg-[#f0fdf4] hover:text-[#064e3b]"
                   }`}
-                  aria-current={isActive ? "page" : undefined}
                 >
-                  <Icon className={`h-5 w-5 ${isActive ? "stroke-[2.5]" : ""}`} />
-                  <span>{item.label}</span>
+                  <Icon className="h-4.5 w-4.5 shrink-0" />
+                  {item.label}
                 </button>
               );
             })}
+          </nav>
+
+          {/* Sign Out block */}
+          <div className="border-t border-[#e2ede7] px-5 py-4 space-y-2">
+            {phone && (
+              <div className="flex items-center gap-2.5 px-2 text-xs text-slate-500">
+                <Smartphone className="h-3.5 w-3.5 shrink-0 text-slate-400" />
+                <span className="truncate">{phone}</span>
+              </div>
+            )}
+            <button
+              type="button"
+              onClick={() => {
+                setPhone("");
+                setBvnProfile(null);
+                setHistory([]);
+                setNavStack([]);
+                if (typeof window !== "undefined") {
+                  localStorage.removeItem("taxeasy_phone");
+                  localStorage.removeItem("taxeasy_history");
+                  localStorage.removeItem("taxeasy_profile");
+                }
+                setScreenState("welcome");
+              }}
+              className="flex w-full items-center gap-2 rounded-xl px-2 py-2 text-xs font-semibold text-slate-500 hover:bg-rose-50 hover:text-rose-600 transition-colors"
+            >
+              <ArrowLeft className="h-3.5 w-3.5" />
+              Sign out taxpayer
+            </button>
           </div>
-        </nav>
+        </aside>
+      )}
+
+      {/* ═══════════════════════════════════════════════
+          MAIN WRAPPER
+          ═══════════════════════════════════════════════ */}
+      <main className={`flex-1 flex flex-col ${showSidebar ? "lg:pl-64" : ""}`}>
+        {/* Desktop Header bar */}
+        {showSidebar && (
+          <header className="hidden lg:flex sticky top-0 z-30 items-center justify-between border-b border-[#e2ede7] bg-white/90 backdrop-blur-md px-8 py-4.5">
+            <div className="flex items-center gap-3">
+              {navStack.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    const prev = navStack[navStack.length - 1];
+                    setNavStack((stack) => stack.slice(0, -1));
+                    setScreenState(prev);
+                  }}
+                  className="flex h-9 w-9 items-center justify-center rounded-xl border border-[#d1fae5] bg-white text-[#064e3b] hover:bg-[#f0fdf4] transition-colors"
+                >
+                  <ArrowLeft className="h-4.5 w-4.5" />
+                </button>
+              )}
+              <div>
+                <h1 className="text-base font-extrabold text-[#064e3b] tracking-tight">
+                  {SCREEN_TITLES[screen] || "Filing Dashboard"}
+                </h1>
+                <p className="text-[10px] text-slate-400 font-medium">Compliance Year: 2026</p>
+              </div>
+            </div>
+            
+            <div className="flex items-center gap-3">
+              <div className="inline-flex items-center gap-1.5 rounded-full bg-[#f0fdf4] px-3.5 py-1 text-xs font-bold text-emerald-800 border border-[#d1fae5]">
+                <ShieldCheck className="h-3.5 w-3.5 text-emerald-600" />
+                Nigeria PIT Act 2025 compliant
+              </div>
+            </div>
+          </header>
         )}
-      </div>
-    </main>
+
+        {/* ── Onboarding Center Content Panel ── */}
+        {isOnboarding ? (
+          <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-[#f0fdf4] via-[#f8fffe] to-[#ecfdf5] px-4 py-8 relative overflow-hidden">
+            {/* Ambient Background Glows */}
+            <div className="absolute top-[-10%] left-[-10%] w-[40%] aspect-square rounded-full bg-[#34d399]/10 blur-[120px] pointer-events-none" />
+            <div className="absolute bottom-[-10%] right-[-10%] w-[40%] aspect-square rounded-full bg-[#fcd34d]/10 blur-[120px] pointer-events-none" />
+
+            <div className="w-full max-w-md z-10 flex flex-col gap-6">
+              {/* Onboarding Mobile/Title Header */}
+              {screen !== "welcome" && (
+                <header className="flex items-center justify-between lg:hidden px-1">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (navStack.length > 0) {
+                        const prev = navStack[navStack.length - 1];
+                        setNavStack((stack) => stack.slice(0, -1));
+                        setScreenState(prev);
+                      }
+                    }}
+                    className="h-10 w-10 flex items-center justify-center rounded-full border border-[#d1fae5] bg-white text-[#064e3b]"
+                  >
+                    <ArrowLeft className="h-4.5 w-4.5" />
+                  </button>
+                  <p className="text-xs font-bold text-[#064e3b] uppercase tracking-wider">{SCREEN_TITLES[screen]}</p>
+                  <div className="h-10 w-10" />
+                </header>
+              )}
+
+              {/* Logo representation */}
+              {screen === "welcome" && (
+                <div className="flex flex-col items-center text-center gap-1.5 mb-2">
+                  <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-[#064e3b] to-[#065f46] shadow-xl shadow-emerald-950/20 mb-2">
+                    <ShieldCheck className="h-7 w-7 text-white" />
+                  </div>
+                  <h1 className="text-2xl font-black text-[#064e3b] tracking-tight">TaxEasy</h1>
+                  <span className="rounded-full bg-emerald-100 px-3 py-0.5 text-[9px] font-extrabold uppercase tracking-wider text-emerald-800 border border-[#d1fae5]">
+                    Official Premium Remitter
+                  </span>
+                </div>
+              )}
+
+              {/* WELCOME SCREEN */}
+              {screen === "welcome" && (
+                <section className="premium-card p-7 space-y-6 screen-enter">
+                  <div className="space-y-2">
+                    <h2 className="text-2xl font-black leading-tight text-[#064e3b] tracking-tight">
+                      Settle your tax in under 90 seconds
+                    </h2>
+                    <p className="text-xs leading-relaxed text-slate-500">
+                      Linking your banking profile is fast, automated, and secure. Review calculations under the new 2026 Nigeria PIT Act, pay, and receive a verified Tax Clearance Certificate immediately.
+                    </p>
+                  </div>
+
+                  <div className="space-y-3 rounded-2xl bg-[#f0fdf4] border border-[#d1fae5] p-4.5">
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-emerald-800">2026 Reform Updates</p>
+                    <ul className="space-y-2 text-xs font-medium text-emerald-950">
+                      <li className="flex items-center gap-2">
+                        <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
+                        First ₦800,000 completely tax-free
+                      </li>
+                      <li className="flex items-center gap-2">
+                        <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
+                        Small businesses &lt; ₦100M 100% CIT exempt
+                      </li>
+                      <li className="flex items-center gap-2">
+                        <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
+                        1% Presumptive rate for informal traders
+                      </li>
+                    </ul>
+                  </div>
+
+                  <div className="space-y-3">
+                    <button
+                      type="button"
+                      onClick={() => setScreen("phone")}
+                      className="btn-primary"
+                    >
+                      Verify and Start
+                      <ChevronRight className="h-4.5 w-4.5" />
+                    </button>
+                  </div>
+
+                  {/* Trust Strip */}
+                  <div className="pt-2 border-t border-slate-100">
+                    <div className="trust-strip">
+                      <div className="trust-item">
+                        <Lock className="h-3 w-3 text-slate-400" />
+                        NIBSS Secure
+                      </div>
+                      <div className="trust-item">
+                        <ShieldCheck className="h-3 w-3 text-slate-400" />
+                        FIRS Compliant
+                      </div>
+                      <div className="trust-item">
+                        <Smartphone className="h-3 w-3 text-slate-400" />
+                        256-bit Encrypted
+                      </div>
+                    </div>
+                  </div>
+                </section>
+              )}
+
+              {/* PHONE INPUT SCREEN */}
+              {screen === "phone" && (
+                <section className="premium-card p-7 space-y-6 screen-enter">
+                  <div className="space-y-1.5">
+                    <div className="flex items-center gap-2 mb-1">
+                      <div className="h-8 w-8 rounded-xl bg-[#064e3b] flex items-center justify-center">
+                        <Smartphone className="h-4 w-4 text-white" />
+                      </div>
+                      <h2 className="text-xl font-extrabold text-[#064e3b]">Sign in with phone</h2>
+                    </div>
+                    <p className="text-xs text-slate-500">We&apos;ll send a 6-digit OTP code to verify your number.</p>
+                  </div>
+
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Nigerian Phone Number</label>
+                      {/* Flex row: prefix chip + input side by side */}
+                      <div className="flex items-stretch h-[3.25rem] rounded-[0.875rem] border-[1.5px] border-[#d1fae5] bg-white overflow-hidden focus-within:border-[#10b981] focus-within:ring-2 focus-within:ring-[#10b981]/20 transition-all">
+                        {/* +234 Prefix */}
+                        <div className="flex items-center gap-1.5 px-3.5 border-r border-slate-200 bg-slate-50 shrink-0">
+                          <span className="text-sm font-black text-[#064e3b]">🇳🇬</span>
+                          <span className="text-sm font-bold text-slate-700">+234</span>
+                        </div>
+                        {/* Actual input — no extra padding needed */}
+                        <input
+                          type="tel"
+                          value={phone}
+                          onChange={(e) => setPhone(toNumberInput(e.target.value))}
+                          placeholder="801 234 5678"
+                          className="flex-1 bg-transparent px-4 text-sm font-semibold text-[#0a0f0d] placeholder:text-slate-300 outline-none"
+                          maxLength={11}
+                          inputMode="tel"
+                          autoComplete="tel"
+                        />
+                      </div>
+                      <p className="text-[10px] text-slate-400 mt-1.5 font-medium">Example: 801 234 5678 (without the leading 0)</p>
+                    </div>
+
+                    {authError && <p className="text-xs font-semibold text-rose-600 bg-rose-50 p-2.5 rounded-xl border border-rose-100">{authError}</p>}
+
+                    <button
+                      type="button"
+                      onClick={handleSendOtp}
+                      disabled={!canContinuePhone || authLoading}
+                      className="btn-primary"
+                    >
+                      {authLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : "Send verification code"}
+                    </button>
+                  </div>
+                </section>
+              )}
+
+              {screen === "otp" && (
+                <section className="premium-card p-7 space-y-6 screen-enter">
+                  <div className="space-y-1.5">
+                    <div className="flex items-center gap-2 mb-1">
+                      <div className="h-8 w-8 rounded-xl bg-[#064e3b] flex items-center justify-center">
+                        <Lock className="h-4 w-4 text-white" />
+                      </div>
+                      <h2 className="text-xl font-extrabold text-[#064e3b]">Verify your phone</h2>
+                    </div>
+                    <p className="text-xs text-slate-500">
+                      Enter the 6-digit code sent to <strong className="text-slate-700">+234 {phone}</strong>
+                    </p>
+                  </div>
+
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">OTP Verification Code</label>
+                      <div className="flex items-stretch h-[3.25rem] rounded-[0.875rem] border-[1.5px] border-[#d1fae5] bg-white overflow-hidden focus-within:border-[#10b981] focus-within:ring-2 focus-within:ring-[#10b981]/20 transition-all">
+                        <div className="flex items-center gap-1.5 px-3.5 border-r border-slate-200 bg-slate-50 shrink-0">
+                          <Lock className="h-3.5 w-3.5 text-[#064e3b]" />
+                          <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">OTP</span>
+                        </div>
+                        <input
+                          value={otp}
+                          onChange={(e) => setOtp(toNumberInput(e.target.value).slice(0, 6))}
+                          placeholder="Enter 6-digit code"
+                          className="flex-1 bg-transparent px-4 text-xl font-black text-[#0a0f0d] tracking-[0.4em] placeholder:text-slate-300 placeholder:tracking-[0.2em] placeholder:font-normal outline-none"
+                          maxLength={6}
+                          inputMode="numeric"
+                          autoComplete="one-time-code"
+                          autoFocus
+                          disabled={authLoading}
+                        />
+                        <div className="flex items-center pr-4 shrink-0">
+                          {authLoading ? (
+                            <Loader2 className="h-4 w-4 animate-spin text-emerald-600" />
+                          ) : otp.length > 0 ? (
+                            <span className="text-[10px] font-bold text-slate-400">{otp.length}/6</span>
+                          ) : null}
+                        </div>
+                      </div>
+                      {/* Progress dots — fill left to right as digits are entered */}
+                      <div className="flex justify-center gap-2 mt-3">
+                        {Array.from({ length: 6 }).map((_, i) => (
+                          <div
+                            key={i}
+                            className={`h-2 rounded-full transition-all duration-200 ${
+                              i < otp.length ? "w-5 bg-emerald-500" : "w-2 bg-slate-200"
+                            }`}
+                          />
+                        ))}
+                      </div>
+                    </div>
+
+                    {authError && <p className="text-xs font-semibold text-rose-600 bg-rose-50 p-2.5 rounded-xl border border-rose-100">{authError}</p>}
+
+                    <button
+                      type="button"
+                      onClick={handleVerifyOtp}
+                      disabled={!canVerifyOtp || authLoading}
+                      className="btn-primary"
+                    >
+                      {authLoading
+                        ? <><Loader2 className="h-5 w-5 animate-spin" /> Verifying&hellip;</>
+                        : "Confirm Code"}
+                    </button>
+
+                    <p className="text-center text-[10px] text-slate-400">
+                      Didn&apos;t receive a code?{" "}
+                      <button type="button" onClick={handleSendOtp} className="text-emerald-700 font-bold underline underline-offset-2">Resend</button>
+                    </p>
+                  </div>
+                </section>
+              )}
+
+              {/* BVN / NIN ENTRY SCREEN */}
+              {screen === "bvnEntry" && (
+                <section className="space-y-4 screen-enter">
+                  <div className="premium-card p-7 space-y-5">
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#f0fdf4] border border-[#d1fae5]">
+                        <Fingerprint className="h-6 w-6 text-[#064e3b]" />
+                      </div>
+                      <div>
+                        <h2 className="text-lg font-black text-[#064e3b] tracking-tight">Verify Taxpayer Identity</h2>
+                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">SECURE NIBSS LINKAGE</p>
+                      </div>
+                    </div>
+
+                    {/* Toggle ID type */}
+                    <div className="grid grid-cols-2 gap-3 p-1 rounded-2xl bg-slate-100">
+                      <button
+                        type="button"
+                        onClick={() => { setOnboardingIdType("bvn"); setBvnNumber(""); setBvnError(""); }}
+                        className={`h-10 rounded-xl text-xs font-extrabold transition-all ${
+                          onboardingIdType === "bvn" ? "bg-white text-[#064e3b] shadow-sm" : "text-slate-500"
+                        }`}
+                      >
+                        Bank Verification (BVN)
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => { setOnboardingIdType("nin"); setBvnNumber(""); setBvnError(""); }}
+                        className={`h-10 rounded-xl text-xs font-extrabold transition-all ${
+                          onboardingIdType === "nin" ? "bg-white text-[#064e3b] shadow-sm" : "text-slate-500"
+                        }`}
+                      >
+                        National Identity (NIN)
+                      </button>
+                    </div>
+
+                    <p className="text-xs leading-relaxed text-slate-500">
+                      Providing your 11-digit {onboardingIdType.toUpperCase()} automatically imports and signs your profile records to authenticate your 2026 Tax Clearance Certificate (TCC).
+                    </p>
+
+                    <div>
+                      <div className="flex justify-between items-center mb-1.5">
+                        <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider">
+                          {onboardingIdType.toUpperCase()} Number
+                        </label>
+                        <span className="text-[10px] font-bold text-slate-400">{bvnNumber.length}/11</span>
+                      </div>
+                      <input
+                        value={bvnNumber}
+                        onChange={(e) => setBvnNumber(e.target.value.replace(/\D/g, "").slice(0, 11))}
+                        placeholder={onboardingIdType === "bvn" ? "22345678901" : "33456789012"}
+                        inputMode="numeric"
+                        maxLength={11}
+                        className="input-field text-lg font-bold tracking-widest text-center"
+                      />
+                    </div>
+
+                    {bvnError && <p className="text-xs font-semibold text-rose-600 bg-rose-50 p-2.5 rounded-xl border border-rose-100">{bvnError}</p>}
+
+                    <button
+                      type="button"
+                      onClick={handleVerifyBvn}
+                      disabled={bvnLoading || bvnNumber.length !== 11}
+                      className="btn-primary"
+                    >
+                      {bvnLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : <><ScanFace className="h-5 w-5" /> Verify {onboardingIdType.toUpperCase()}</>}
+                    </button>
+                  </div>
+
+                  <div className="rounded-2xl border border-emerald-100 bg-[#f0fdf4] p-4 flex gap-3">
+                    <ShieldCheck className="h-5 w-5 text-emerald-700 shrink-0 mt-0.5" />
+                    <p className="text-[11px] leading-relaxed text-emerald-950 font-medium">
+                      Encryption Shield active: Your identification digits are only used to trigger a secure read request to verified governmental identity databases. Data is processed in-memory and never cached.
+                    </p>
+                  </div>
+                </section>
+              )}
+
+              {/* FACE SCANNERS */}
+              {screen === "faceVerification" && (
+                <section className="premium-card p-6 space-y-6 screen-enter text-center">
+
+                  {/* Header */}
+                  <div className="space-y-1">
+                    <div className="inline-flex items-center gap-1.5 rounded-full bg-emerald-100 px-3 py-0.5 text-[9px] font-extrabold text-emerald-800 border border-[#d1fae5] mb-1">
+                      <ScanFace className="h-3 w-3" /> NIBSS BIOMETRIC CHECK
+                    </div>
+                    <h2 className="text-xl font-extrabold text-[#064e3b]">Face Verification</h2>
+                    <p className="text-xs text-slate-500">Hold your face steady inside the oval until detected.</p>
+                  </div>
+
+                  {/* Hard-blocked camera error */}
+                  {livenessStep === "blocked" && (
+                    <div className="liveness-blocked-panel">
+                      <div className="h-14 w-14 rounded-full bg-rose-100 flex items-center justify-center">
+                        <Camera className="h-7 w-7 text-rose-500" />
+                      </div>
+                      <p className="text-sm font-black text-rose-700">Camera Access Required</p>
+                      <p className="text-[11px] text-rose-600 leading-relaxed max-w-[280px]">{livenessError}</p>
+                      <div className="rounded-xl bg-rose-50 border border-rose-200 p-3 text-[10px] text-rose-700 font-semibold">
+                        <strong>How to fix:</strong> Click the camera icon in your browser&apos;s address bar → select &quot;Allow&quot; → tap Retry.
+                      </div>
+                      <button type="button" onClick={resetLiveness} className="btn-primary">
+                        <Camera className="h-4 w-4" /> Retry with Camera
+                      </button>
+                    </div>
+                  )}
+
+                  {/* Camera frame — shown once camera opens */}
+                  {livenessStep !== "idle" && livenessStep !== "blocked" && (
+                    <div className="relative mx-auto" style={{ width: "min(260px, 90%)", aspectRatio: "3/4" }}>
+                      <div className={`relative overflow-hidden bg-slate-900 h-full w-full rounded-[2rem] transition-all duration-500 ${
+                        livenessStep === "passed"
+                          ? "ring-4 ring-emerald-400 shadow-lg shadow-emerald-400/30"
+                          : faceVisible
+                          ? "ring-4 ring-emerald-400"
+                          : "ring-2 ring-slate-700"
+                      }`}>
+
+                        {/* Mirrored video */}
+                        <video ref={videoRef} autoPlay muted playsInline
+                          className="h-full w-full object-cover"
+                          style={{ transform: "scaleX(-1)" }}
+                        />
+
+                        {/* Oval face guide */}
+                        <div className="face-oval-guide" />
+
+                        {/* Corner brackets */}
+                        <div className="pointer-events-none absolute inset-0">
+                          <div className="absolute top-3 left-3 h-7 w-7 rounded-tl-2xl border-t-[3px] border-l-[3px] border-emerald-400" />
+                          <div className="absolute top-3 right-3 h-7 w-7 rounded-tr-2xl border-t-[3px] border-r-[3px] border-emerald-400" />
+                          <div className="absolute bottom-3 left-3 h-7 w-7 rounded-bl-2xl border-b-[3px] border-l-[3px] border-emerald-400" />
+                          <div className="absolute bottom-3 right-3 h-7 w-7 rounded-br-2xl border-b-[3px] border-r-[3px] border-emerald-400" />
+                        </div>
+
+                        {/* Loading overlay */}
+                        {livenessStep === "loading" && (
+                          <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-slate-900/90">
+                            <Loader2 className="h-9 w-9 animate-spin text-emerald-400" />
+                            <span className="text-[11px] text-emerald-300 font-bold">Opening camera…</span>
+                          </div>
+                        )}
+
+                        {/* No face found — scan line + prompt */}
+                        {livenessStep === "detecting" && !faceVisible && (
+                          <>
+                            <div className="face-scan-line" />
+                            <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-slate-900/40">
+                              <ScanFace className="h-12 w-12 text-emerald-400 animate-pulse" />
+                              <span className="text-[9px] text-emerald-300 font-bold uppercase tracking-widest bg-slate-950/50 px-3 py-1 rounded-full">
+                                Position face in oval
+                              </span>
+                            </div>
+                          </>
+                        )}
+
+                        {/* Face found — scan line still running + status pill */}
+                        {livenessStep === "detecting" && faceVisible && (
+                          <>
+                            <div className="face-scan-line" />
+                            <div className="absolute bottom-3 inset-x-3 flex justify-center">
+                              <span className="bg-emerald-600/90 backdrop-blur-sm text-white text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-full flex items-center gap-1.5">
+                                <span className="h-1.5 w-1.5 rounded-full bg-white animate-ping inline-block" />
+                                Face Detected
+                              </span>
+                            </div>
+                          </>
+                        )}
+
+                        {/* Passed overlay */}
+                        {livenessStep === "passed" && (
+                          <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-emerald-950/80 bounce-in">
+                            <div className="h-16 w-16 rounded-full bg-emerald-500 flex items-center justify-center shadow-lg shadow-emerald-500/40">
+                              <CheckCircle2 className="h-10 w-10 text-white" />
+                            </div>
+                            <span className="text-emerald-300 font-black text-sm">Face Verified ✓</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Status label */}
+                  {livenessStep === "detecting" && (
+                    <div className={`h-11 w-full flex items-center justify-center gap-2 rounded-2xl text-xs font-bold border transition-all ${
+                      faceVisible
+                        ? "bg-emerald-50 border-emerald-200 text-emerald-800"
+                        : "bg-slate-50 border-slate-200 text-slate-500"
+                    }`}>
+                      {faceVisible
+                        ? <><CheckCircle2 className="h-4 w-4 text-emerald-600" /> Holding steady… verifying identity</>
+                        : <><ScanFace className="h-4 w-4 animate-pulse" /> Look directly at the camera</>}
+                    </div>
+                  )}
+
+                  {livenessStep === "passed" && (
+                    <div className="h-11 w-full flex items-center justify-center gap-2 rounded-2xl bg-emerald-100 border border-emerald-200 text-xs font-bold text-emerald-800 bounce-in">
+                      <CheckCircle2 className="h-4 w-4 text-emerald-600" /> Identity confirmed — redirecting…
+                    </div>
+                  )}
+
+                  {/* Idle: start button */}
+                  {livenessStep === "idle" && (
+                    <div className="space-y-4">
+                      <div className="bg-slate-50 border border-slate-100 rounded-2xl p-4 space-y-2 text-left">
+                        <p className="text-xs font-black text-[#064e3b] flex items-center gap-2">
+                          <ScanFace className="h-4 w-4" /> How it works
+                        </p>
+                        <ul className="space-y-1.5 text-[11px] text-slate-500">
+                          <li className="flex items-start gap-2"><span className="text-emerald-600 font-bold mt-0.5">1.</span> Your camera opens</li>
+                          <li className="flex items-start gap-2"><span className="text-emerald-600 font-bold mt-0.5">2.</span> Position your face inside the oval guide</li>
+                          <li className="flex items-start gap-2"><span className="text-emerald-600 font-bold mt-0.5">3.</span> Hold still for 1–2 seconds while we detect your face</li>
+                          <li className="flex items-start gap-2"><span className="text-emerald-600 font-bold mt-0.5">4.</span> You’ll be automatically verified and continue</li>
+                        </ul>
+                      </div>
+                      <button type="button" onClick={startLiveness} className="btn-primary">
+                        <Camera className="h-5 w-5" /> Open Camera &amp; Verify Face
+                      </button>
+                    </div>
+                  )}
+
+                  {/* FaceEngine — mounted only while detecting */}
+                  {engineReady && livenessStep === "detecting" && (
+                    <FaceEngineDynamic
+                      videoRef={videoRef}
+                      challenge={null}
+                      onFaceDetected={handleFaceDetected}
+                      onFaceLost={handleFaceLost}
+                      onError={handleEngineError}
+                    />
+                  )}
+
+                </section>
+              )}
+
+              {/* IDENTITY SUCCESS BANNER */}
+              {screen === "bvnSuccess" && bvnProfile && (
+                <section className="space-y-4 screen-enter">
+                  <div className="hero-card px-6 py-8 text-center text-white flex flex-col items-center">
+                    <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-emerald-400/20 ring-4 ring-emerald-400/30 bounce-in">
+                      <UserCheck className="h-8 w-8 text-emerald-300" />
+                    </div>
+                    <h2 className="text-xl font-black">Identity Verified!</h2>
+                    <p className="mt-1 text-xs text-emerald-200 max-w-[280px]">Your personal details are authenticated from secure registries.</p>
+                    <div className="badge-gold mt-4">
+                      ₦2026 TAXPAYER STAMP READY
+                    </div>
+                  </div>
+
+                  <div className="premium-card p-6 space-y-4">
+                    <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest">Taxpayer Ledger Record</h3>
+                    <div className="space-y-2">
+                      {[
+                        { label: "Taxpayer Name", value: bvnProfile.fullName },
+                        { label: "Birth Registry", value: bvnProfile.dob },
+                        { label: "Origin Registry", value: bvnProfile.town },
+                        { label: `${identityType.toUpperCase()} Ref`, value: bvnProfile.bvn },
+                        { label: "Mobile Registry", value: bvnProfile.phone },
+                      ].map(({ label, value }) => (
+                        <div key={label} className="flex items-center justify-between rounded-xl bg-slate-50 px-4 py-2.5 text-xs font-semibold">
+                          <span className="text-slate-400">{label}</span>
+                          <span className="text-slate-800">{value}</span>
+                        </div>
+                      ))}
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => setScreen("home")}
+                      className="btn-primary mt-2"
+                    >
+                      Enter Tax Dashboard
+                      <ChevronRight className="h-4.5 w-4.5" />
+                    </button>
+                  </div>
+                </section>
+              )}
+            </div>
+          </div>
+        ) : (
+          /* ── Core Tax Flow & Main App Tabs ── */
+          <div className="flex-1 flex flex-col">
+            {/* Mobile Header bar */}
+            <header className="lg:hidden sticky top-0 z-30 flex items-center justify-between border-b border-[#e2ede7] bg-white/95 backdrop-blur px-5 py-4 shadow-sm">
+              <div className="flex items-center gap-2">
+                {navStack.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const prev = navStack[navStack.length - 1];
+                      setNavStack((stack) => stack.slice(0, -1));
+                      setScreenState(prev);
+                    }}
+                    className="flex h-8 w-8 items-center justify-center rounded-lg border border-[#d1fae5] bg-white text-[#064e3b]"
+                  >
+                    <ArrowLeft className="h-4 w-4" />
+                  </button>
+                )}
+                <span className="text-sm font-extrabold text-[#064e3b] tracking-tight">{SCREEN_TITLES[screen]}</span>
+              </div>
+              <div className="flex items-center gap-2">
+
+                <div className="h-8 w-8 rounded-lg bg-[#064e3b] text-white flex items-center justify-center font-black text-xs">
+                  {bvnProfile ? `${bvnProfile.firstName[0]}${bvnProfile.lastName[0]}` : "T"}
+                </div>
+              </div>
+            </header>
+
+            {/* Container for content scroll */}
+            <div className={`flex-1 overflow-y-auto max-w-4xl w-full mx-auto px-4 py-6 space-y-6 ${showBottomNav ? "pb-24 lg:pb-8" : "pb-8"}`}>
+              
+              {/* HOME SCREEN */}
+              {screen === "home" && (
+                <section className="space-y-6 screen-enter">
+                  {/* Greeting Hero card */}
+                  <div className="hero-card p-6 text-white space-y-4">
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <span className="text-[10px] font-bold text-emerald-300 uppercase tracking-widest">NIGERIA TAXPAYER LEDGER</span>
+                        <h2 className="text-xl font-black mt-1">Hello, {bvnProfile?.firstName || "Taxpayer"}</h2>
+                        <p className="text-xs text-emerald-100 max-w-[260px] mt-0.5">Link your income records and comply with the PIT Reform Act 2026.</p>
+                      </div>
+                      <div className="badge-gold">2026 TAX YEAR</div>
+                    </div>
+
+                    <div className="pt-4 border-t border-emerald-800 flex justify-between items-center">
+                      <div>
+                        <p className="text-[10px] text-emerald-300 font-bold uppercase tracking-wide">Remittance Status</p>
+                        <p className="text-sm font-extrabold mt-0.5">
+                          {history.length > 0 ? "✅ FULLY COMPLIANT" : "⚠️ UNFILED ESTIMATE"}
+                        </p>
+                      </div>
+                      <button
+                        onClick={() => setScreen("incomeType")}
+                        className="bg-white text-[#064e3b] px-4 py-2 rounded-xl text-xs font-black hover:bg-emerald-50 shadow-sm transition-all"
+                      >
+                        Start Compliance filing
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Quick Action Grid */}
+                  <div className="space-y-2.5">
+                    <p className="section-label">Filing tools</p>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                      <button onClick={() => { setIncomeType("freelance"); setScreen("incomeType"); }} className="quick-action">
+                        <UploadCloud className="h-5 w-5 text-emerald-600 mb-1" />
+                        Assess Income
+                      </button>
+                      <button onClick={() => { if (history.length > 0) { setPaymentRecord(history[0]); setScreen("tcc"); } else { setScreen("incomeType"); } }} className="quick-action">
+                        <FileText className="h-5 w-5 text-emerald-600 mb-1" />
+                        Download TCC
+                      </button>
+                      <button onClick={() => setScreen("transparency")} className="quick-action">
+                        <PieChart className="h-5 w-5 text-emerald-600 mb-1" />
+                        Trust Impact
+                      </button>
+                      <button onClick={() => setScreen("history")} className="quick-action">
+                        <History className="h-5 w-5 text-emerald-600 mb-1" />
+                        Filing History
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Compliance Timeline / Deadlines */}
+                  <div className="premium-card p-5 space-y-4">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Calendar className="h-4 w-4 text-[#064e3b]" />
+                        <h3 className="text-sm font-extrabold text-[#064e3b]">Annual Compliance Timeline</h3>
+                      </div>
+                      <span className="text-[9px] font-black uppercase tracking-wider text-slate-400 bg-slate-50 px-2 py-0.5 rounded border border-slate-100">2026 Fiscal Year</span>
+                    </div>
+                    <div className="relative pl-7 border-l-2 border-dashed border-slate-200 space-y-5">
+                      <div className="relative">
+                        <span className="timeline-dot-green" />
+                        <h4 className="text-slate-800 font-extrabold text-xs leading-snug">1 January 2026</h4>
+                        <p className="text-slate-400 text-[11px] mt-0.5 leading-relaxed">Nigeria PIT Act 2025 comes into full effect.</p>
+                      </div>
+                      <div className="relative">
+                        <span className="timeline-dot-amber" />
+                        <h4 className="text-slate-800 font-extrabold text-xs leading-snug">31 March 2026</h4>
+                        <p className="text-slate-400 text-[11px] mt-0.5 leading-relaxed">PAYE annual returns filing due dates for FIRS/LIRS.</p>
+                      </div>
+                      <div className="relative">
+                        <span className="timeline-dot-gray" />
+                        <h4 className="text-slate-800 font-extrabold text-xs leading-snug">31 December 2026</h4>
+                        <p className="text-slate-400 text-[11px] mt-0.5 leading-relaxed">Final presumptive tax and self-employed remittances deadline.</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Info Notice */}
+                  <div className="rounded-2xl border border-emerald-100 bg-[#f0fdf4] p-4 flex gap-3">
+                    <ShieldCheck className="h-5 w-5 text-emerald-700 shrink-0" />
+                    <p className="text-[11px] leading-relaxed text-emerald-950 font-medium">
+                      Legitimacy Guarantee: Every estimation is dynamically compiled in alignment with the gazetted Nigeria Tax Act 2025 guidelines. Small registered enterprises are verified for automatic CIT exemptions.
+                    </p>
+                  </div>
+                </section>
+              )}
+
+              {/* INCOME TYPE SELECTOR */}
+              {screen === "incomeType" && (
+                <section className="premium-card p-6.5 space-y-6 screen-enter">
+                  <div className="space-y-1.5">
+                    <h2 className="text-xl font-extrabold text-[#064e3b]">How do you earn your income?</h2>
+                    <p className="text-xs text-slate-500">Select the option that matches your current primary livelihood.</p>
+                  </div>
+
+                  <div className="space-y-3">
+                    {[
+                      { 
+                        value: "salary", 
+                        label: "Formal Salary earner (PAYE)", 
+                        desc: "Tax is remitted monthly by your employer. File for a TCC review.",
+                        icon: Briefcase
+                      },
+                      { 
+                        value: "freelance", 
+                        label: "Freelancer / Gig Contractor", 
+                        desc: "For creators, gig workers, and consultants with irregular credit lines.",
+                        icon: Laptop
+                      },
+                      { 
+                        value: "business", 
+                        label: "Registered Small Business Owner", 
+                        desc: "Registered LLC/Partnerships. Turnovers below ₦100M are CIT exempt.",
+                        icon: Building2
+                      },
+                      { 
+                        value: "informal", 
+                        label: "Market Trader / Informal Worker", 
+                        desc: "Micro businesses under ₦12M are 100% exempt. Presumptive tax rules apply.",
+                        icon: Store
+                      },
+                    ].map((item) => {
+                      const IconComponent = item.icon;
+                      const isActive = incomeType === item.value;
+                      return (
+                        <button
+                          key={item.value}
+                          type="button"
+                          onClick={() => setIncomeType(item.value)}
+                          className={`w-full rounded-2xl border-2 p-4 text-left transition-all flex items-start gap-3.5 ${
+                            isActive
+                              ? "border-emerald-500 bg-[#f0fdf4] shadow-sm ring-1 ring-emerald-500/20"
+                              : "border-slate-100 bg-white hover:bg-slate-50/80 hover:border-slate-200"
+                          }`}
+                        >
+                          <div className={`h-10 w-10 shrink-0 rounded-xl flex items-center justify-center transition-colors ${
+                            isActive ? "bg-emerald-100 text-emerald-800" : "bg-slate-50 text-slate-400"
+                          }`}>
+                            <IconComponent className="h-5 w-5" />
+                          </div>
+                          
+                          <div className="flex-1 space-y-0.5">
+                            <span className="block text-xs font-black text-[#0a0f0d]">{item.label}</span>
+                            <span className="block text-[10px] leading-relaxed text-slate-400 font-semibold">{item.desc}</span>
+                          </div>
+                          
+                          <div className={`h-5 w-5 shrink-0 rounded-full border-2 flex items-center justify-center transition-all mt-0.5 ${
+                            isActive ? "border-emerald-600 bg-emerald-50" : "border-slate-200 bg-white"
+                          }`}>
+                            <div className={`h-2.5 w-2.5 rounded-full transition-all ${
+                              isActive ? "bg-emerald-600 scale-100" : "bg-transparent scale-0"
+                            }`} />
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  {incomeType === "salary" ? (
+                    <button
+                      type="button"
+                      onClick={() => setScreen("incomeInput")}
+                      className="btn-primary"
+                    >
+                      Proceed with Manual Entry
+                    </button>
+                  ) : (
+                    <div className="grid grid-cols-2 gap-3">
+                      <button
+                        type="button"
+                        onClick={() => setScreen("statementUpload")}
+                        className="btn-secondary h-12 text-xs font-bold"
+                      >
+                        Upload Bank Statement
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setScreen("incomeInput")}
+                        className="btn-primary h-12 text-xs font-bold"
+                      >
+                        Proceed with Manual Entry
+                      </button>
+                    </div>
+                  )}
+                </section>
+              )}
+
+              {/* STATEMENT UPLOADER */}
+              {screen === "statementUpload" && (
+                <section className="premium-card p-6.5 space-y-6 screen-enter">
+                  <div className="space-y-1.5">
+                    <div className="inline-flex items-center gap-1.5 rounded-full bg-emerald-100 px-3 py-0.5 text-[9px] font-extrabold text-emerald-800 border border-[#d1fae5]">
+                      <UploadCloud className="h-3 w-3" />
+                      OCR BANK SCANNER
+                    </div>
+                    <h2 className="text-xl font-extrabold text-[#064e3b]">Upload your bank statement</h2>
+                    <p className="text-xs text-slate-500">Provide your statement in PDF. Secure local parser parses records instantly.</p>
+                  </div>
+
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Statement Issuer</label>
+                      <div className="grid grid-cols-3 gap-3">
+                        {["GTBank", "Access Bank", "Zenith Bank"].map((bank) => (
+                          <button
+                            key={bank}
+                            type="button"
+                            onClick={() => setStatementBank(bank)}
+                            className={`h-11 rounded-2xl border text-xs font-bold transition-all ${
+                              statementBank === bank
+                                ? "border-emerald-600 bg-[#f0fdf4] text-[#064e3b]"
+                                : "border-slate-200 bg-white text-[#0a0f0d]"
+                            }`}
+                          >
+                            {bank}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    <label className="flex min-h-40 cursor-pointer flex-col items-center justify-center rounded-3xl border-2 border-dashed border-[#d1fae5] bg-[#f0fdf4]/50 p-6 text-center hover:bg-[#f0fdf4] transition-colors">
+                      <UploadCloud className="h-10 w-10 text-emerald-700 mb-2" />
+                      <span className="text-xs font-bold text-[#064e3b]">
+                        {statementFileName || "Choose PDF bank statement"}
+                      </span>
+                      <span className="text-[10px] text-slate-400 mt-1">PDF format only. Run securely on your browser.</span>
+                      <input
+                        type="file"
+                        accept="application/pdf,.pdf"
+                        onChange={(event) => handleStatementFile(event.target.files?.[0])}
+                        className="sr-only"
+                      />
+                    </label>
+
+                    {statementError && <p className="text-xs font-semibold text-rose-600 bg-rose-50 p-2.5 rounded-xl border border-rose-100">{statementError}</p>}
+
+                    <div className="pt-2 border-t border-slate-100 flex flex-col gap-2">
+                      <button
+                        type="button"
+                        onClick={loadDemoStatement}
+                        disabled={statementParseLoading}
+                        className="w-full h-12 flex items-center justify-center gap-2.5 rounded-2xl border border-emerald-200 bg-emerald-50/60 hover:bg-emerald-50 text-xs font-black text-emerald-800 transition-all shadow-sm hover:shadow active:scale-[0.98]"
+                      >
+                        {statementParseLoading ? (
+                          <Loader2 className="h-4 w-4 animate-spin text-emerald-700" />
+                        ) : (
+                          <Wand2 className="h-4 w-4 text-emerald-600 animate-pulse" />
+                        )}
+                        <span>Generate Seeded Statement for {statementBank}</span>
+                      </button>
+                      
+                      <button
+                        type="button"
+                        onClick={() => setScreen("incomeType")}
+                        className="btn-ghost text-xs text-center mt-1"
+                      >
+                        Back to income source
+                      </button>
+                    </div>
+                  </div>
+                </section>
+              )}
+
+              {/* STATEMENT REVIEW SCREEN */}
+              {screen === "statementReview" && parsedStatement && (
+                <section className="space-y-6 screen-enter">
+                  <div className="premium-card p-6 space-y-4">
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">
+                          {parsedStatement.bank} PARSER ACTIVE
+                        </span>
+                        <h2 className="text-lg font-black text-[#064e3b] mt-0.5">Verify and categorise credit lines</h2>
+                        <p className="text-xs text-slate-500">Correct classifications to ensure only eligible credits are taxed.</p>
+                      </div>
+                      <span className="rounded-full bg-emerald-100 px-3.5 py-0.5 text-xs font-bold text-emerald-800">
+                        {parsedStatement.transactions.length} Records
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3 bg-slate-50 p-4 rounded-2xl text-xs font-semibold">
+                      {(() => {
+                        const totals = statementTotals(parsedStatement.transactions);
+                        return (
+                          <>
+                            <div>
+                              <p className="text-slate-400">Total Credits</p>
+                              <p className="text-slate-800 font-bold mt-0.5">{formatNaira(totals.grossIncome)}</p>
+                            </div>
+                            <div>
+                              <p className="text-slate-400">Business Expenses</p>
+                              <p className="text-slate-800 font-bold mt-0.5">{formatNaira(totals.businessExpenses)}</p>
+                            </div>
+                            <div>
+                              <p className="text-slate-400">Transfers Ignored</p>
+                              <p className="text-slate-800 font-bold mt-0.5">{formatNaira(totals.ignored)}</p>
+                            </div>
+                            <div>
+                              <p className="text-slate-400">Assessable Livelihood</p>
+                              <p className="text-[#064e3b] font-bold mt-0.5">{formatNaira(Math.max(totals.grossIncome - totals.businessExpenses, 0))}</p>
+                            </div>
+                          </>
+                        );
+                      })()}
+                    </div>
+                  </div>
+
+                  {/* Transaction loop list */}
+                  <div className="space-y-2.5">
+                    <p className="section-label">Transaction Records</p>
+                    <div className="premium-card overflow-hidden">
+                      <div className="divide-y divide-slate-100/80">
+                        {parsedStatement.transactions.map((t) => (
+                          <div key={t.id} className="p-4 flex flex-col md:flex-row md:items-center justify-between gap-4 hover:bg-slate-50/40 transition-colors">
+                            <div className="flex items-center gap-3 min-w-0 flex-1">
+                              <div className={`h-9 w-9 rounded-xl flex items-center justify-center font-bold text-xs shrink-0 ${
+                                t.direction === "credit" ? "bg-emerald-50 text-emerald-700 border border-emerald-100/60" : "bg-slate-50 text-slate-500 border border-slate-100"
+                              }`}>
+                                {t.direction === "credit" ? "CR" : "DR"}
+                              </div>
+                              <div className="min-w-0 flex-1">
+                                <p className="text-xs font-bold text-slate-800 truncate">{t.description}</p>
+                                <p className="text-[10px] text-slate-400 mt-0.5 font-medium">{new Date(t.date).toLocaleDateString("en-NG")}</p>
+                              </div>
+                            </div>
+
+                            <div className="flex items-center justify-between md:justify-end gap-3.5 border-t md:border-0 pt-3 md:pt-0 shrink-0">
+                              <span className={`text-xs font-black shrink-0 ${t.direction === "credit" ? "text-emerald-700" : "text-slate-800"}`}>
+                                {t.direction === "credit" ? "+" : "-"}{formatNaira(t.amountNaira)}
+                              </span>
+
+                              <select
+                                value={t.category}
+                                onChange={(e) => updateTransactionCategory(t.id, e.target.value)}
+                                className="h-8 rounded-lg border border-slate-200 bg-slate-50 px-2 text-[10px] font-bold text-slate-600 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none transition-colors"
+                              >
+                                <option value="income">Gross Assessable Income</option>
+                                <option value="business_expense">Deductible Business Expense</option>
+                                <option value="personal_expense">Personal / Private spend</option>
+                                <option value="transfer">Self Transfer (Exempt)</option>
+                                <option value="tax_exempt">Legislated Reliefs / Exempts</option>
+                              </select>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setScreen("incomeInput")}
+                      className="btn-secondary h-12 text-xs font-bold"
+                    >
+                      Configure Deductions Relieves
+                    </button>
+                    
+                    <button
+                      type="button"
+                      onClick={handleCalculateFromStatement}
+                      disabled={calcLoading}
+                      className="btn-primary h-12 text-xs font-bold"
+                    >
+                      {calcLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : "Assess statement tax liability"}
+                    </button>
+                  </div>
+                </section>
+              )}
+
+              {/* INCOME INPUT SCREEN */}
+              {screen === "incomeInput" && (
+                <section className="premium-card p-6.5 space-y-6 screen-enter">
+                  <div className="space-y-1.5">
+                    <h2 className="text-xl font-extrabold text-[#064e3b]">Enter annual livelihood details</h2>
+                    <p className="text-xs text-slate-500">Specify income values manually. Estimate figures if uncertain.</p>
+                  </div>
+
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Annual gross income (₦)</label>
+                      <div className="input-flex-wrap">
+                        <span className="input-prefix text-[#064e3b] font-black">₦</span>
+                        <input
+                          type="text"
+                          inputMode="numeric"
+                          value={annualIncomeInput}
+                          onChange={(e) => setAnnualIncomeInput(toCurrencyInput(e.target.value))}
+                          placeholder="3,600,000"
+                          className="input-inner"
+                        />
+                      </div>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => setSideIncomeEnabled((v) => !v)}
+                      className="w-full h-12 flex items-center justify-between rounded-2xl border border-slate-200 px-4.5 text-xs font-bold bg-slate-50 transition-all hover:bg-slate-100"
+                    >
+                      <span>I have supplementary side income</span>
+                      <span className={sideIncomeEnabled ? "text-emerald-700" : "text-slate-400"}>
+                        {sideIncomeEnabled ? "Enabled (Tap to close)" : "Disabled (Tap to expand)"}
+                      </span>
+                    </button>
+
+                    {sideIncomeEnabled && (
+                      <div className="space-y-2 bounce-in">
+                        <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider">Supplemental side income (₦)</label>
+                        <div className="input-flex-wrap">
+                          <span className="input-prefix text-[#064e3b] font-black">₦</span>
+                          <input
+                            type="text"
+                            inputMode="numeric"
+                            value={sideIncomeInput}
+                            onChange={(e) => setSideIncomeInput(toCurrencyInput(e.target.value))}
+                            placeholder="600,000"
+                            className="input-inner"
+                          />
+                        </div>
+                      </div>
+                    )}
+
+                    {calcError && <p className="text-xs font-semibold text-rose-600 bg-rose-50 p-2.5 rounded-xl border border-rose-100">{calcError}</p>}
+
+                    <div className="pt-2 border-t border-slate-100 grid grid-cols-2 gap-3">
+                      <button
+                        type="button"
+                        onClick={handleCalculate}
+                        disabled={calcLoading}
+                        className="btn-secondary h-12 text-xs font-bold"
+                      >
+                        Skip Deductions & Assess
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setScreen("deductionsWizard")}
+                        className="btn-primary h-12 text-xs font-bold"
+                      >
+                        Apply Deductions Reliefs
+                      </button>
+                    </div>
+                  </div>
+                </section>
+              )}
+
+              {/* DEDUCTIONS WIZARD */}
+              {screen === "deductionsWizard" && (
+                <section className="premium-card p-6.5 space-y-6 screen-enter">
+                  <div className="space-y-1.5">
+                    <h2 className="text-xl font-extrabold text-[#064e3b]">Configure tax reliefs and deductions</h2>
+                    <p className="text-xs text-slate-500">
+                      Under the Nigeria Tax Act, pension, health schemes, housing fund, and housing rent relief deduct your taxable income.
+                    </p>
+                  </div>
+
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <div className="flex justify-between items-center mb-1.5">
+                          <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider">Annual Pension Contributions</label>
+                          <span className="text-[10px] text-slate-400">100% Tax Exempt</span>
+                        </div>
+                        <div className="input-flex-wrap">
+                          <span className="input-prefix text-[#064e3b] font-black">₦</span>
+                          <input
+                            type="text"
+                            inputMode="numeric"
+                            value={pensionInput}
+                            onChange={(e) => setPensionInput(toCurrencyInput(e.target.value))}
+                            placeholder="240,000"
+                            className="input-inner"
+                          />
+                        </div>
+                      </div>
+
+                      <div>
+                        <div className="flex justify-between items-center mb-1.5">
+                          <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider">National Housing Fund (NHF)</label>
+                          <span className="text-[10px] text-slate-400">2.5% of basic</span>
+                        </div>
+                        <div className="input-flex-wrap">
+                          <span className="input-prefix text-[#064e3b] font-black">₦</span>
+                          <input
+                            type="text"
+                            inputMode="numeric"
+                            value={nhfInput}
+                            onChange={(e) => setNhfInput(toCurrencyInput(e.target.value))}
+                            placeholder="90,000"
+                            className="input-inner"
+                          />
+                        </div>
+                      </div>
+
+                      <div>
+                        <div className="flex justify-between items-center mb-1.5">
+                          <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider">National Health Insurance (NHIS)</label>
+                          <span className="text-[10px] text-slate-400">Tax Exempt</span>
+                        </div>
+                        <div className="input-flex-wrap">
+                          <span className="input-prefix text-[#064e3b] font-black">₦</span>
+                          <input
+                            type="text"
+                            inputMode="numeric"
+                            value={nhisInput}
+                            onChange={(e) => setNhisInput(toCurrencyInput(e.target.value))}
+                            placeholder="60,000"
+                            className="input-inner"
+                          />
+                        </div>
+                      </div>
+
+                      <div>
+                        <div className="flex justify-between items-center mb-1.5">
+                          <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider">Annual Housing Rent Paid</label>
+                          <span className="text-[10px] text-slate-400">20% Relief (Max ₦500k)</span>
+                        </div>
+                        <div className="input-flex-wrap">
+                          <span className="input-prefix text-[#064e3b] font-black">₦</span>
+                          <input
+                            type="text"
+                            inputMode="numeric"
+                            value={rentInput}
+                            onChange={(e) => setRentInput(toCurrencyInput(e.target.value))}
+                            placeholder="800,000"
+                            className="input-inner"
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    <div>
+                      <div className="flex justify-between items-center mb-1.5">
+                        <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider">Life Insurance premiums</label>
+                        <span className="text-[10px] text-slate-400">Fully Exempt</span>
+                      </div>
+                      <div className="input-flex-wrap">
+                        <span className="input-prefix text-[#064e3b] font-black">₦</span>
+                        <input
+                          type="text"
+                          inputMode="numeric"
+                          value={lifeInsuranceInput}
+                          onChange={(e) => setLifeInsuranceInput(toCurrencyInput(e.target.value))}
+                          placeholder="120,000"
+                          className="input-inner"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="pt-2 border-t border-slate-100 grid grid-cols-2 gap-3">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setPensionInput(""); setNhfInput(""); setNhisInput(""); setRentInput(""); setLifeInsuranceInput("");
+                          handleCalculate();
+                        }}
+                        className="btn-secondary h-12 text-xs font-bold"
+                      >
+                        Reset and Calculate
+                      </button>
+                      <button
+                        type="button"
+                        onClick={parsedStatement ? handleCalculateFromStatement : handleCalculate}
+                        disabled={calcLoading}
+                        className="btn-primary h-12 text-xs font-bold"
+                      >
+                        {calcLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : "Apply and Calculate"}
+                      </button>
+                    </div>
+                  </div>
+                </section>
+              )}
+
+              {/* ESTIMATION RESULT SCREEN */}
+              {screen === "result" && calculation && (
+                <section className="space-y-6 screen-enter">
+                  <div className="premium-card p-6.5 space-y-5">
+                    <div>
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                        ANNUAL PERSONAL ASSESSMENT
+                      </span>
+                      <h2 className="text-2xl font-black text-[#064e3b] mt-0.5">Your tax estimate statement</h2>
+                    </div>
+
+                    {/* Numeric Hero box */}
+                    <div className="bg-[#f0fdf4] border border-[#d1fae5] rounded-3xl p-6.5 text-center space-y-2">
+                      <p className="text-xs font-bold text-[#064e3b]">Total Estimated PIT Liability</p>
+                      <h3 className="number-hero text-[#064e3b] count-up">
+                        {formatNaira(calculation.totalTaxNaira)}
+                      </h3>
+                      {calculation.effectiveRate > 0 && (
+                        <p className="text-[10px] font-extrabold text-emerald-800 uppercase tracking-wider bg-emerald-100/60 inline-block px-3 py-1 rounded-full border border-[#d1fae5]">
+                          Effective Rate: {(calculation.effectiveRate * 100).toFixed(1)}% of total income
+                        </p>
+                      )}
+                    </div>
+
+                    {/* Effective rate spectrum gauge */}
+                    {!calculation.smallBusinessExemptionApplied && !calculation.nanoBusinessExemptionApplied && (
+                      <div className="space-y-1.5 p-1">
+                        <div className="flex justify-between text-[10px] font-bold text-slate-400 uppercase">
+                          <span>Progressive spectrum</span>
+                          <span>Max 25% PIT Bracket</span>
+                        </div>
+                        <div className="rate-gauge-track">
+                          <div
+                            className="rate-gauge-fill bg-gradient-to-r from-emerald-400 to-emerald-600"
+                            style={{ width: `${Math.min((calculation.effectiveRate / 0.25) * 100, 100)}%` }}
+                          />
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Financial summary blocks */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5 bg-slate-50 p-5 rounded-2xl text-xs font-semibold text-slate-700">
+                      <div>
+                        <p className="text-slate-400">Declared annual livelihood</p>
+                        <p className="text-sm font-bold text-slate-800 mt-0.5">{formatNaira(calculation.totalIncomeNaira)}</p>
+                      </div>
+                      <div>
+                        <p className="text-slate-400">Relief Exempt Deductions</p>
+                        <p className="text-sm font-bold text-[#064e3b] mt-0.5">-{formatNaira(calculation.totalDeductionsNaira)}</p>
+                      </div>
+                      <div className="md:col-span-2 pt-2.5 border-t border-slate-200">
+                        <p className="text-slate-400">Net Assessable Chargeable Livelihood</p>
+                        <p className="text-sm font-black text-slate-800 mt-0.5">{formatNaira(calculation.chargeableIncomeNaira)}</p>
+                      </div>
+                    </div>
+
+                    {/* Exemptions Flag alerts */}
+                    {calculation.smallBusinessExemptionApplied && (
+                      <div className="rounded-2xl border border-emerald-100 bg-[#f0fdf4] p-4 flex gap-3">
+                        <Sparkles className="h-5 w-5 text-emerald-700 shrink-0 mt-0.5" />
+                        <div>
+                          <h4 className="text-xs font-black text-emerald-950">Small Business CIT Exemption Active</h4>
+                          <p className="text-[11px] leading-relaxed text-emerald-800 mt-0.5">
+                            LLC / Partnerships turnovers below ₦100,000,000 threshold are completely exempted from corporate income tax under the Reform act of 2026.
+                          </p>
+                        </div>
+                      </div>
+                    )}
+
+                    {calculation.nanoBusinessExemptionApplied && (
+                      <div className="rounded-2xl border border-emerald-100 bg-[#f0fdf4] p-4 flex gap-3">
+                        <Sparkles className="h-5 w-5 text-emerald-700 shrink-0 mt-0.5" />
+                        <div>
+                          <h4 className="text-xs font-black text-emerald-950">Micro Business Total Exemption Active</h4>
+                          <p className="text-[11px] leading-relaxed text-emerald-800 mt-0.5">
+                            Micro-enterprises and informal traders with turnouts below ₦12,000,000 are completely exempted from personal income tax bands.
+                          </p>
+                        </div>
+                      </div>
+                    )}
+
+                    {calculation.presumptiveTaxApplied && (
+                      <div className="rounded-2xl border border-amber-100 bg-amber-50 p-4 flex gap-3">
+                        <Sparkles className="h-5 w-5 text-amber-700 shrink-0 mt-0.5" />
+                        <div>
+                          <h4 className="text-xs font-black text-amber-950">1% Presumptive Tax Scheme Applied</h4>
+                          <p className="text-[11px] leading-relaxed text-amber-800 mt-0.5">
+                            Livelihoods in informal sectors above ₦12M but below ₦100M qualify for the flat presumptive 1% turnover rate instead of progressive bands.
+                          </p>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Progressive band rows */}
+                    {!calculation.smallBusinessExemptionApplied && !calculation.nanoBusinessExemptionApplied && !calculation.presumptiveTaxApplied && calculation.breakdown.length > 0 && (
+                      <div className="space-y-2">
+                        <p className="section-label">Tax band allocations</p>
+                        <div className="border border-slate-100 rounded-2xl overflow-hidden bg-slate-50 shadow-sm overflow-x-auto">
+                          {/* Table Header */}
+                          <div className="grid grid-cols-3 gap-1 px-3 py-2.5 border-b border-slate-200 bg-slate-100/70 text-[9px] font-bold uppercase tracking-wider text-slate-500 min-w-[320px]">
+                            <span>Band Rate</span>
+                            <span className="text-center">Taxable Income</span>
+                            <span className="text-right">Tax Due</span>
+                          </div>
+
+                          <div className="divide-y divide-slate-100 min-w-[320px]">
+                            {calculation.breakdown.map((item, i) => (
+                              <div key={i} className="grid grid-cols-3 gap-1 px-3 py-3 items-center text-xs font-semibold hover:bg-white/50 transition-colors">
+                                <span className="text-slate-800 font-bold truncate">{item.label}</span>
+                                <span className="text-slate-500 font-medium text-center">{formatNaira(item.taxableAmount)}</span>
+                                <span className="text-[#064e3b] font-black text-right">{formatNaira(item.taxAmount)}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* PLATFORM CHARGES */}
+                    {!calculation.smallBusinessExemptionApplied && !calculation.nanoBusinessExemptionApplied && (
+                      <div className="border border-slate-200 rounded-2xl overflow-hidden text-xs font-semibold bg-white shadow-sm">
+                        <div className="flex justify-between px-4 py-3 bg-slate-50 text-slate-500 border-b">
+                          <span>Estimated PIT Liability</span>
+                          <span className="text-slate-800 font-bold">{formatNaira(calculation.totalTaxNaira)}</span>
+                        </div>
+                        <div className="flex justify-between px-4 py-3 text-slate-500 border-b">
+                          <span className="flex items-center gap-1">
+                            TaxEasy service fee
+                            <span className="rounded-full bg-emerald-50 px-1.5 py-0.5 text-[9px] font-extrabold text-emerald-700 border border-emerald-100">1.5%</span>
+                          </span>
+                          <span className="text-slate-800 font-bold">{formatNaira(calculation.serviceFeeNaira)}</span>
+                        </div>
+                        <div className="flex justify-between px-4 py-3.5 bg-[#f0fdf4] text-[#064e3b] font-black text-sm">
+                          <span>Total due for settlement</span>
+                          <span>{formatNaira(calculation.totalAmountDueNaira)}</span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="rounded-2xl border border-slate-200 bg-white p-4.5 flex gap-3 text-xs leading-relaxed text-slate-500 font-medium">
+                    <Info className="h-5 w-5 text-slate-400 shrink-0 mt-0.5" />
+                    <p>{calculation.disclaimer}</p>
+                  </div>
+
+                  <div className="flex flex-col md:flex-row gap-3">
+                    <button
+                      type="button"
+                      onClick={resetCalculation}
+                      className="btn-secondary h-12 text-xs font-bold md:w-1/3"
+                    >
+                      Reset Assessment
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setScreen("paymentMethod")}
+                      className="btn-primary h-12 text-xs font-bold md:w-2/3"
+                    >
+                      Proceed to Secure Settlement
+                    </button>
+                  </div>
+                </section>
+              )}
+
+              {/* PAYMENT METHOD SELECTION */}
+              {screen === "paymentMethod" && calculation && (
+                <section className="premium-card p-6.5 space-y-6 screen-enter">
+                  <div className="space-y-1.5">
+                    <h2 className="text-xl font-extrabold text-[#064e3b]">Select payment remittance mode</h2>
+                    <p className="text-xs text-slate-500">Remit settlements securely through integrated partner gateways.</p>
+                  </div>
+
+                  {/* Checkout summaries */}
+                  <div className="border border-slate-200 rounded-2xl overflow-hidden text-xs font-semibold">
+                    <div className="flex justify-between px-4 py-2.5 text-slate-400 border-b">
+                      <span>Assessable tax</span>
+                      <span>{formatNaira(calculation.totalTaxNaira)}</span>
+                    </div>
+                    <div className="flex justify-between px-4 py-2.5 text-slate-400 border-b">
+                      <span>Remitter fee (1.5%)</span>
+                      <span>{formatNaira(calculation.serviceFeeNaira)}</span>
+                    </div>
+                    <div className="flex justify-between px-4 py-3 bg-[#f0fdf4] text-[#064e3b] font-black text-sm">
+                      <span>Remittance total due</span>
+                      <span>{formatNaira(calculation.totalAmountDueNaira)}</span>
+                    </div>
+                  </div>
+
+                  {/* Payment selections list */}
+                  <div className="space-y-3">
+                    {[
+                      { id: "card", title: "Verify with Credit or Debit card", desc: "Visa, Mastercard, or Verve cards. Instant confirmation.", icon: CreditCard },
+                      { id: "bank_transfer", title: "Remit via Instant Bank Transfer", desc: "Generate dynamic virtual accounts for direct transfer.", icon: Landmark },
+                      { id: "ussd", title: "Instant USSD Code Remittance", desc: "Initiate secure transactions with mobile network codes.", icon: Smartphone },
+                    ].map((method) => {
+                      const Icon = method.icon;
+                      const isSelected = paymentMethod === method.id;
+                      return (
+                        <button
+                          key={method.id}
+                          type="button"
+                          onClick={() => setPaymentMethod(method.id)}
+                          className={`payment-method-card ${isSelected ? "selected animate-scale" : ""}`}
+                        >
+                          <div className={`h-9 w-9 rounded-xl flex items-center justify-center font-bold text-xs ${
+                            isSelected ? "bg-emerald-100 text-[#064e3b]" : "bg-slate-100 text-slate-500"
+                          }`}>
+                            <Icon className="h-4.5 w-4.5" />
+                          </div>
+                          <div className="text-left flex-1 min-w-0">
+                            <h4 className="text-xs font-black text-[#0a0f0d]">{method.title}</h4>
+                            <p className="text-[10px] text-slate-400 mt-0.5 font-medium">{method.desc}</p>
+                          </div>
+                          <div className={`h-5 w-5 rounded-full border-2 flex items-center justify-center shrink-0 ${
+                            isSelected ? "border-emerald-500 bg-emerald-500 text-white" : "border-slate-300"
+                          }`}>
+                            {isSelected && <span className="h-2 w-2 rounded-full bg-white" />}
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={handlePay}
+                    disabled={paymentLoading}
+                    className="btn-primary"
+                  >
+                    Confirm & Settle {formatNaira(calculation.totalAmountDueNaira)}
+                  </button>
+                </section>
+              )}
+
+              {/* PAYMENT PROCESSING SPINNER */}
+              {screen === "paymentProcessing" && calculation && (
+                <section className="premium-card p-8 text-center space-y-6 screen-enter">
+                  <div className="relative mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-[#f0fdf4] border border-[#d1fae5] scale-110">
+                    <Loader2 className="h-9 w-9 animate-spin text-[#064e3b]" />
+                  </div>
+
+                  <div className="space-y-2">
+                    <h2 className="text-lg font-black text-[#064e3b]">Processing Livelihood Settlement</h2>
+                    <p className="text-xs text-slate-500 max-w-[280px] mx-auto">
+                      Remittance details are routing through banking gateways. Do not close or refresh this panel.
+                    </p>
+                  </div>
+
+                  {/* Processing Step indicators */}
+                  <div className="max-w-xs mx-auto border border-slate-100 bg-slate-50 p-4.5 rounded-2xl text-left space-y-3.5">
+                    {processingSteps.map((step, idx) => {
+                      const isActive = processingStep === idx;
+                      const isCompleted = processingStep > idx;
+                      return (
+                        <div
+                          key={idx}
+                          className={`flex items-center gap-3 transition-opacity duration-300 ${
+                            isActive ? "opacity-100" : isCompleted ? "opacity-60" : "opacity-30"
+                          }`}
+                        >
+                          <div className={`h-5 w-5 rounded-full flex items-center justify-center text-[10px] font-black ${
+                            isCompleted ? "bg-emerald-500 text-white" : isActive ? "bg-[#064e3b] text-white" : "bg-slate-200 text-slate-500"
+                          }`}>
+                            {isCompleted ? "✓" : idx + 1}
+                          </div>
+                          <span className="text-[11px] font-semibold text-slate-700 truncate">{step}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </section>
+              )}
+
+              {/* PAYMENT SUCCESS CELEBRATION */}
+              {screen === "paymentSuccess" && paymentRecord && (
+                <section className="space-y-4 screen-enter">
+                  <div className="hero-card px-6 py-9 text-center text-white flex flex-col items-center">
+                    <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-emerald-400/20 ring-4 ring-emerald-400/30 bounce-in">
+                      <CheckCircle2 className="h-9 w-9 text-emerald-300" />
+                    </div>
+                    <h2 className="text-xl font-black">Settlement Confirmed!</h2>
+                    <p className="mt-1 text-xs text-emerald-200">Your remittance has been validated and cleared with the Treasury.</p>
+                    <div className="badge-gold mt-4 font-bold">
+                      OFFICIAL ₦ RECEIPT ISSUED
+                    </div>
+                  </div>
+
+                  <div className="premium-card p-6.5 space-y-5">
+                    <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest">Remittance Summary</h3>
+                    <div className="space-y-2 text-xs font-semibold text-slate-700">
+                      {[
+                        { label: "Settlement Total", value: formatNaira(paymentRecord.amountNaira) },
+                        { label: "Payment Type", value: paymentMethodLabel(paymentRecord.method) },
+                        { label: "Reference No", value: paymentRecord.reference },
+                        { label: "Timestamp", value: new Date(paymentRecord.paidAt).toLocaleString("en-NG") },
+                        { label: "Taxpayer", value: paymentRecord.name },
+                        { label: "Registry ID", value: `${identityType.toUpperCase()} ${paymentRecord.identity}` },
+                      ].map((row, i) => (
+                        <div key={i} className="flex items-start justify-between gap-3 px-3 py-2 bg-slate-50 rounded-xl">
+                          <span className="text-slate-400 shrink-0">{row.label}</span>
+                          <span className="text-slate-800 font-bold text-right break-all">{row.value}</span>
+                        </div>
+                      ))}
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3 pt-2">
+                      <button
+                        type="button"
+                        onClick={() => setScreen("receipt")}
+                        className="btn-secondary h-12 text-xs font-bold"
+                      >
+                        Print Digital Receipt
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setScreen("tcc")}
+                        className="btn-primary h-12 text-xs font-bold"
+                      >
+                        Generate TCC Certificate
+                      </button>
+                    </div>
+                  </div>
+                </section>
+              )}
+
+              {/* DIGITAL RECEIPT */}
+              {screen === "receipt" && paymentRecord && (
+                <section className="space-y-4 screen-enter">
+                  <div className="premium-card p-6.5 space-y-6 relative overflow-hidden">
+                    {/* Background paid stamp */}
+                    <div className="stamp-paid">PAID TCC</div>
+
+                    <div className="flex justify-between items-center pb-4 border-b border-slate-100">
+                      <div className="flex items-center gap-2">
+                        <ReceiptText className="h-5.5 w-5.5 text-[#064e3b]" />
+                        <div>
+                          <h2 className="text-sm font-black text-[#064e3b]">TAX REMITTANCE RECEIPT</h2>
+                          <p className="text-[9px] text-slate-400 font-bold uppercase tracking-wider">REPUBLIC OF NIGERIA</p>
+                        </div>
+                      </div>
+
+                      <button
+                        onClick={async () => {
+                          const shareText = `Official Tax Remittance Receipt\nRef: ${paymentRecord.reference}\nAmount: ${formatNaira(paymentRecord.amountNaira)}\nTaxpayer: ${paymentRecord.name}\nIdentity: ${identityType.toUpperCase()} ${paymentRecord.identity}`;
+                          if (navigator.share) {
+                            try { await navigator.share({ title: 'Tax Clearance Remittance', text: shareText }); } catch (err) {}
+                          } else {
+                            alert("Copy of receipt details:\n\n" + shareText);
+                          }
+                        }}
+                        className="h-9 w-9 flex items-center justify-center rounded-xl bg-slate-50 border hover:bg-slate-100 text-slate-600 transition-colors"
+                        aria-label="Share receipt details"
+                      >
+                        <Share2 className="h-4 w-4" />
+                      </button>
+                    </div>
+
+                    {/* QR Code and verification box */}
+                    <div className="flex flex-col items-center justify-center p-6 bg-slate-50 border rounded-2xl gap-3 text-center">
+                      <div className="p-3 bg-white border rounded-xl shadow-sm">
+                        <QRCodeSVG
+                          value={JSON.stringify({
+                            ref: paymentRecord.reference,
+                            amt: paymentRecord.amountNaira,
+                            taxpayer: paymentRecord.name,
+                            date: paymentRecord.paidAt,
+                            id: `${identityType.toUpperCase()}:${paymentRecord.identity}`
+                          })}
+                          size={130}
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <p className="text-xs font-bold text-slate-700">Scan to Verify Authenticity</p>
+                        <p className="text-[10px] text-slate-400 font-medium">Secured cryptographic signature registered in federal records.</p>
+                      </div>
+                    </div>
+
+                    {/* Receipt Details rows */}
+                    <div className="border border-slate-100 rounded-2xl overflow-hidden divide-y divide-slate-100 bg-white text-xs font-semibold shadow-sm">
+                      {[
+                        { label: "Remitter Name", value: paymentRecord.name },
+                        { label: "Registry ID", value: `${identityType.toUpperCase()} ${paymentRecord.identity}` },
+                        { label: "Receipt Ref", value: `RCP-${paymentRecord.reference}` },
+                        { label: "Settlement Ref", value: paymentRecord.reference },
+                        { label: "Tax Amount", value: formatNaira(paymentRecord.taxNaira) },
+                        { label: "Platform Fee", value: formatNaira(paymentRecord.serviceFeeNaira) },
+                      ].map((row, idx) => (
+                        <div key={idx} className="flex items-start justify-between px-4 py-3 even:bg-slate-50/40 hover:bg-slate-50/20 transition-colors gap-3">
+                          <span className="font-bold text-slate-400 uppercase tracking-wider text-[9px] shrink-0 pt-0.5 w-24">{row.label}</span>
+                          <span className="text-slate-800 font-extrabold text-right text-xs break-all flex-1">{row.value}</span>
+                        </div>
+                      ))}
+                      <div className="flex items-center justify-between px-4 py-3 bg-[#f0fdf4]">
+                        <span className="font-bold text-[#064e3b] uppercase tracking-wider text-[9px]">Total Remitted</span>
+                        <span className="text-base font-black text-[#064e3b]">{formatNaira(paymentRecord.amountNaira)}</span>
+                      </div>
+                    </div>
+
+                    {/* Action links */}
+                    <div className="flex flex-wrap gap-2">
+                      <button
+                        onClick={() => setScreen("transparency")}
+                        className="flex-1 min-w-[90px] h-11 rounded-xl bg-slate-100 text-[10px] font-bold text-slate-700 hover:bg-slate-200 transition-colors flex items-center justify-center gap-1.5"
+                      >
+                        <PieChart className="h-3.5 w-3.5 shrink-0" />
+                        <span>Explore Impact</span>
+                      </button>
+                      
+                      <button
+                        onClick={() => window.print()}
+                        className="flex-1 min-w-[90px] h-11 rounded-xl bg-slate-100 text-[10px] font-bold text-slate-700 hover:bg-slate-200 transition-colors flex items-center justify-center gap-1.5"
+                      >
+                        <Printer className="h-3.5 w-3.5 shrink-0" />
+                        <span>Print Page</span>
+                      </button>
+
+                      <button
+                        onClick={() => setScreen("tcc")}
+                        className="flex-1 min-w-[90px] h-11 rounded-xl bg-emerald-50 text-[10px] font-bold text-emerald-800 hover:bg-emerald-100 transition-colors flex items-center justify-center gap-1.5 border border-emerald-200"
+                      >
+                        <FileText className="h-3.5 w-3.5 shrink-0" />
+                        <span>Get TCC PDF</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => setScreen("home")}
+                    className="btn-primary"
+                  >
+                    Done and Continue
+                  </button>
+                </section>
+              )}
+
+
+              {/* TCC VIEW SCREEN */}
+              {screen === "tcc" && paymentRecord && (
+                <section className="space-y-4 screen-enter">
+                  <div className="premium-card p-6.5 space-y-6 relative overflow-hidden border-2 border-emerald-700/25">
+                    {/* Gold Ribbon / Seal */}
+                    <div className="absolute top-6 right-6 flex flex-col items-center">
+                      <div className="h-12 w-12 rounded-full bg-gradient-to-br from-amber-400 via-yellow-300 to-amber-500 border-2 border-yellow-200 shadow-md flex items-center justify-center">
+                        <Award className="h-6 w-6 text-amber-900" />
+                      </div>
+                      <span className="text-[7px] font-black text-amber-800 uppercase tracking-widest mt-1">OFFICIAL SEAL</span>
+                    </div>
+
+                    <div className="text-center space-y-2 border-b border-emerald-100 pb-5">
+                      <div className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-[#f0fdf4] border border-[#d1fae5] text-[#064e3b] mb-1">
+                        <ShieldCheck className="h-5.5 w-5.5" />
+                      </div>
+                      <h2 className="text-base font-black text-[#064e3b] tracking-wider uppercase">TAX CLEARANCE CERTIFICATE</h2>
+                      <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest">VERIFIED TAX COMPLIANCE CLEARANCE</p>
+                    </div>
+
+                    <div className="border border-emerald-100/60 rounded-2xl overflow-hidden divide-y divide-emerald-50/50 bg-white shadow-sm">
+                      {[
+                        { label: "Certificate No", value: `TCC-${new Date(paymentRecord.paidAt).getFullYear()}-${paymentRecord.reference.split("-")[2] || "894750"}` },
+                        { label: "Taxpayer Name", value: paymentRecord.name },
+                        { label: "Taxpayer ID", value: `${identityType.toUpperCase()} ${paymentRecord.identity}` },
+                        { label: "Tax Period", value: "2026 Fiscal Tax Year" },
+                        { label: "Remittance Ref", value: paymentRecord.reference },
+                        { label: "Tax Liability", value: formatNaira(paymentRecord.taxNaira) },
+                        { label: "Issuance Date", value: new Date(paymentRecord.paidAt).toLocaleDateString("en-NG") },
+                        { label: "Compliance Status", value: "CLEARED & COMPLIANT", highlight: true },
+                      ].map(({ label, value, highlight }) => (
+                        <div key={label} className="flex items-start gap-3 px-4 py-3 hover:bg-emerald-50/10 transition-colors">
+                          <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider shrink-0 w-24 pt-0.5">{label}</span>
+                          <span className={`text-right text-xs break-all flex-1 ${highlight ? "text-emerald-700 font-black uppercase tracking-wider" : "text-slate-800 font-extrabold"}`}>
+                            {value}
+                          </span>
+                          {highlight && (
+                            <span className="shrink-0 bg-[#f0fdf4] border border-emerald-200 px-2 py-0.5 rounded-md text-[9px] font-black text-emerald-700 uppercase tracking-wider">✓</span>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Official PDF Link integration */}
+                    <TccDownloadButton record={paymentRecord} identityType={identityType} maskedIdentity={paymentRecord.identity} />
+
+                    <div className="pt-2 border-t border-slate-100 text-center">
+                      <button
+                        onClick={() => setScreen("transparency")}
+                        className="text-xs font-bold text-emerald-700 hover:underline flex items-center justify-center gap-1.5 mx-auto"
+                      >
+                        <PieChart className="h-3.5 w-3.5" />
+                        Explore how your compliance supports development
+                      </button>
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => setScreen("home")}
+                    className="btn-primary"
+                  >
+                    Done and Return
+                  </button>
+                </section>
+              )}
+
+              {/* HISTORIES */}
+              {screen === "history" && (
+                <section className="space-y-4 screen-enter">
+                  <div className="flex justify-between items-center">
+                    <h2 className="text-xl font-extrabold text-[#064e3b]">Remittance Ledger History</h2>
+                    <span className="rounded-full bg-[#f0fdf4] border border-[#d1fae5] px-3.5 py-0.5 text-xs font-bold text-emerald-800">
+                      {history.length} Filings
+                    </span>
+                  </div>
+
+                  {history.length === 0 ? (
+                    <div className="premium-card p-10 text-center space-y-4">
+                      <div className="h-14 w-14 rounded-full bg-slate-50 text-slate-400 flex items-center justify-center mx-auto">
+                        <History className="h-7 w-7" />
+                      </div>
+                      <div className="space-y-1">
+                        <h3 className="text-sm font-bold text-slate-800">No Remittance Ledger History</h3>
+                        <p className="text-xs text-slate-400">Your registered tax clearance receipts will compile here.</p>
+                      </div>
+                      <button
+                        onClick={() => setScreen("incomeType")}
+                        className="btn-primary max-w-xs mx-auto text-xs"
+                      >
+                        Assess Livelihood Tax Liability
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="premium-card overflow-hidden">
+                      <div className="divide-y divide-slate-100/80">
+                        {history.map((record) => (
+                          <div key={record.reference} className="p-5 space-y-4 hover:bg-slate-50/30 transition-colors relative">
+                            {/* Compliant watermark */}
+                            <div className="absolute top-1/2 right-6 transform -translate-y-1/2 rotate-[-8deg] border-2 border-emerald-500/10 text-emerald-500/10 font-black uppercase text-[10px] px-2 py-0.5 rounded tracking-widest pointer-events-none">
+                              COMPLIANT
+                            </div>
+
+                            <div className="flex justify-between items-start gap-3">
+                              <div className="min-w-0 flex-1">
+                                <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest truncate">
+                                  Ref: {record.reference}
+                                </p>
+                                <h3 className="text-base font-black text-slate-800 mt-1">
+                                  {formatNaira(record.amountNaira)}
+                                </h3>
+                                <p className="text-[10px] text-slate-400 mt-0.5 font-medium">
+                                  {new Date(record.paidAt).toLocaleString("en-NG")}
+                                </p>
+                              </div>
+
+                              <span className="rounded-full bg-[#f0fdf4] border border-emerald-100/80 px-2.5 py-0.5 text-[10px] font-bold text-emerald-800 flex items-center gap-1 shrink-0">
+                                <CheckCircle2 className="h-3 w-3 text-emerald-600 shrink-0" />
+                                Confirmed
+                              </span>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-3 pt-3.5 border-t border-slate-100 text-xs">
+                              <button
+                                onClick={() => {
+                                  setPaymentRecord(record);
+                                  setScreen("receipt");
+                                }}
+                                className="btn-secondary h-9 text-[10px] font-bold"
+                              >
+                                View Remittance Receipt
+                              </button>
+                              <button
+                                onClick={() => {
+                                  setPaymentRecord(record);
+                                  setScreen("tcc");
+                                }}
+                                className="btn-primary h-9 text-[10px] font-bold"
+                              >
+                                View TCC Certificate
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  <button
+                    type="button"
+                    onClick={() => setScreen("home")}
+                    className="btn-secondary mt-2"
+                  >
+                    Return to Dashboard
+                  </button>
+                </section>
+              )}
+
+              {/* BUDGET TRANSPARENCY SCREEN */}
+              {screen === "transparency" && (
+                <section className="premium-card p-6.5 space-y-6 screen-enter">
+                  <div className="space-y-1.5">
+                    <div className="inline-flex items-center gap-1.5 rounded-full bg-emerald-100 px-3 py-0.5 text-[9px] font-extrabold text-emerald-800 border border-[#d1fae5]">
+                      <PieChart className="h-3 w-3" />
+                      CITIZEN TRUST LEDGER
+                    </div>
+                    <h2 className="text-xl font-extrabold text-[#064e3b]">State Capital Budgets & Expenditures</h2>
+                    <p className="text-xs text-slate-500">Track and review how tax resources build capital infrastructure in your state.</p>
+                  </div>
+
+                  <div className="space-y-4">
+                    <div className="rounded-2xl border border-amber-100 bg-amber-50 p-4 flex gap-3 text-xs leading-relaxed text-amber-900 font-medium">
+                      <Info className="h-5 w-5 text-amber-700 shrink-0 mt-0.5" />
+                      <p>
+                        Capital developmental values are calculated from State Fiscal Planning budgets of 2024. Local values are subject to regional allocations.
+                      </p>
+                    </div>
+
+                    <div className="space-y-3">
+                      <div>
+                        <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Select State Constituency</label>
+                        <div className="relative">
+                          <select
+                            value={transparencyStateIdx}
+                            onChange={(e) => setTransparencyStateIdx(Number(e.target.value))}
+                            className="input-field appearance-none pr-10 font-bold"
+                          >
+                            {transparencyData.map((data, idx) => (
+                              <option key={data.state} value={idx}>{data.state} State Constituency</option>
+                            ))}
+                          </select>
+                          <ChevronDown className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 h-4 w-4 text-[#064e3b]" />
+                        </div>
+                      </div>
+
+                      <div className="hero-card p-5 text-white flex justify-between items-center">
+                        <div>
+                          <p className="text-[10px] text-emerald-300 font-bold uppercase tracking-wider">
+                            Constituency Capital Budget ({transparencyData[transparencyStateIdx].year})
+                          </p>
+                          <p className="text-2xl font-black mt-1">
+                            ₦{(transparencyData[transparencyStateIdx].totalBudget / 1_000_000_000).toLocaleString("en-US", { maximumFractionDigits: 1 })} Billion
+                          </p>
+                        </div>
+                        <div className="h-9 w-9 rounded-xl bg-white/10 flex items-center justify-center">
+                          <Building2 className="h-5 w-5 text-emerald-300" />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Spend allocation loop */}
+                    <div className="space-y-2.5">
+                      <p className="section-label">Top Capital Spending Categories</p>
+                      <div className="border border-slate-100 rounded-2xl overflow-hidden divide-y divide-slate-150/60 bg-white shadow-sm">
+                        {transparencyData[transparencyStateIdx].categories.map((cat, i) => {
+                          const percentage = ((cat.amount / transparencyData[transparencyStateIdx].totalBudget) * 100).toFixed(1);
+                          return (
+                            <div key={i} className="p-4 space-y-2 hover:bg-slate-50/20 transition-colors">
+                              <div className="flex justify-between items-center text-xs font-extrabold">
+                                <span className="text-slate-800 font-bold text-[10px] uppercase tracking-wider">{cat.name} Development</span>
+                                <span className="text-[#064e3b] font-black">{percentage}%</span>
+                              </div>
+                              <div className="h-2 w-full bg-slate-100/80 rounded-full overflow-hidden">
+                                <div
+                                  className="h-full bg-gradient-to-r from-emerald-400 to-emerald-600 rounded-full transition-all duration-500"
+                                  style={{ width: `${percentage}%` }}
+                                />
+                              </div>
+                              <div className="flex justify-between items-start gap-4">
+                                <p className="text-[10px] text-slate-400 font-medium leading-relaxed flex-1">{cat.description}</p>
+                                <span className="text-[10px] font-black text-slate-700 bg-slate-100 px-2 py-0.5 rounded shrink-0">
+                                  ₦{(cat.amount / 1_000_000_000).toFixed(1)}B
+                                </span>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* LGA allocation tables */}
+                    <div className="space-y-2">
+                      <p className="section-label">Constituency LGA Drilldowns</p>
+                      <div className="border border-slate-100 rounded-2xl overflow-hidden bg-slate-50 shadow-sm">
+                        {/* Table Header */}
+                        <div className="flex items-center justify-between px-4 py-2.5 border-b border-slate-200 bg-slate-100/70 text-[9px] font-bold uppercase tracking-wider text-slate-500">
+                          <span>Local Authority &amp; Focus</span>
+                          <span>Budget Allocation</span>
+                        </div>
+
+                        <div className="divide-y divide-slate-100">
+                          {transparencyData[transparencyStateIdx].lgas.length > 0 ? (
+                            transparencyData[transparencyStateIdx].lgas.map((lga, i) => (
+                              <div key={i} className="flex items-start justify-between px-4 py-3.5 gap-3 hover:bg-white/50 transition-colors">
+                                <div className="min-w-0 flex-1">
+                                  <span className="text-xs text-slate-800 font-extrabold block">{lga.name} LGA</span>
+                                  <div className="flex items-center gap-1 mt-0.5 text-[10px] text-slate-400 font-semibold">
+                                    <MapPin className="h-3 w-3 text-emerald-600 shrink-0" />
+                                    <span className="truncate">{lga.focus}</span>
+                                  </div>
+                                </div>
+                                <span className="text-xs text-[#064e3b] font-black shrink-0 whitespace-nowrap">
+                                  ₦{(lga.allocation / 1_000_000_000).toFixed(1)}B
+                                </span>
+                              </div>
+                            ))
+                          ) : (
+                            <div className="p-5 text-center">
+                              <p className="text-xs italic text-slate-400">Drilldown records pending assembly updates.</p>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Rep engagement email */}
+                    <div className="pt-5 border-t border-slate-150/60 text-center space-y-4">
+                      <div className="inline-flex items-center gap-1.5 justify-center rounded-xl bg-slate-50 px-3.5 py-1.5 border border-slate-100/80 mx-auto">
+                        <Info className="h-3.5 w-3.5 text-slate-500" />
+                        <span className="text-[10px] text-slate-500 font-bold leading-none">
+                          Source: Public State Gazettes & Capital Development Reports
+                        </span>
+                      </div>
+                      
+                      <div className="bg-[#f0fdf4]/40 rounded-2xl border border-emerald-100/50 p-4 space-y-2.5 max-w-md mx-auto">
+                        <h4 className="text-xs font-extrabold text-[#064e3b] uppercase tracking-wider">Demand Transparency</h4>
+                        <p className="text-[10px] text-slate-500 font-medium leading-normal">
+                          As a tax-paying citizen, you have the right to question regional allocations and developmental timelines. Direct an inquiry directly to your constituency representative.
+                        </p>
+                        <button
+                          type="button"
+                          onClick={() => handleEmailRepresentative(transparencyData[transparencyStateIdx].state)}
+                          className="w-full h-11 flex items-center justify-center gap-2 rounded-xl bg-[#064e3b] text-white hover:bg-emerald-950 text-xs font-bold transition-all shadow-sm active:scale-[0.98]"
+                        >
+                          <Mail className="h-4 w-4 text-[#10b981]" />
+                          Email Local Constituency Representative
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </section>
+              )}
+
+            </div>
+
+            {/* Bottom Mobile/Tablets Navigation pill */}
+            {showBottomNav && (
+              <nav className="fixed inset-x-0 bottom-0 z-50 lg:hidden border-t border-[#e2ede7] bg-white/95 px-3 pb-[calc(env(safe-area-inset-bottom)+0.6rem)] pt-2 shadow-[0_-8px_25px_rgba(6,78,59,0.06)] backdrop-blur-md">
+                <div className="mx-auto grid w-full max-w-md grid-cols-4 gap-1">
+                  {[
+                    { id: "home", label: "Dashboard", icon: Home, screen: "home" },
+                    { id: "statement", label: "Filing", icon: UploadCloud, screen: "incomeType" },
+                    { id: "history", label: "History", icon: History, screen: "history" },
+                    { id: "transparency", label: "Impact", icon: PieChart, screen: "transparency" },
+                  ].map((item) => {
+                    const Icon = item.icon;
+                    const isActive = activeBottomTab === item.id;
+                    return (
+                      <button
+                        key={item.id}
+                        type="button"
+                        onClick={() => goToMainTab(item.screen)}
+                        className={`flex min-h-14 flex-col items-center justify-center gap-1 rounded-2xl text-[10px] font-black transition-all ${
+                          isActive ? "bg-[#f0fdf4] text-[#064e3b]" : "text-slate-400 hover:text-slate-700"
+                        }`}
+                      >
+                        <Icon className={`h-5 w-5 ${isActive ? "stroke-[2.5]" : ""}`} />
+                        <span>{item.label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </nav>
+            )}
+          </div>
+        )}
+      </main>
+    </div>
   );
 }

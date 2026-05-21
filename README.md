@@ -1,111 +1,217 @@
-# TaxEasy: Pay your tax in under 90 seconds
+# TaxEasy 🇳🇬
 
-TaxEasy is a mobile-first, zero-friction web application designed to help Nigerian SMEs, freelancers, salary earners with side income, and informal earners understand and pay tax from real financial activity. Users upload a bank statement PDF, review auto-categorized transactions, calculate what they owe, pay, and receive instant proof.
+> **Pay your Nigerian tax in under 90 seconds.**
 
-Our core philosophy is built on three pillars: **Simplicity** (statement upload before manual forms), **Proof** (instant QR receipts and downloadable Tax Clearance Certificates), and **Trust** (a Transparency Layer showing exactly how your state spends tax revenue).
+TaxEasy is a mobile-first web application that removes every barrier between a Nigerian earner and tax compliance. Upload a bank statement PDF, review auto-categorised transactions, calculate your exact liability under the 2025 Tax Reform Act, pay, and receive an instant Tax Clearance Certificate (TCC) — all without leaving your phone.
 
-**Live Demo:** [Insert Deployed URL Here]
-
----
-
-## 1. The Problem We Solve
-
-In Nigeria, nearly half of small earners — 48% — either don't pay tax or don't know how. The system isn't broken because people refuse to pay; it's broken because the existing tools are too confusing, opaque, and demanding to even try. 
-
-Our survey of 23 respondents validated this: 71% do not pay tax or do not know how to pay, 57% have unreported side income, and users abandon flows when asked for their BVN before seeing their tax bill (a 17.4% comfort gap). Furthermore, 82.6% stated they would be willing to pay *if* they could see where their money was actually going. TaxEasy was built directly in response to this data.
+**Live URL:** _[add after deploy]_
 
 ---
 
-## 2. Screenshots
+## The Problem
 
-*(Screenshots captured at 375px mobile width)*
+> _"71% of surveyed small earners don't pay tax or don't know how. 82.6% said they would pay if they could see where their money went."_
+> — TaxEasy User Survey, May 2026 (n = 23)
 
-| Home Dashboard | Statement Review | Calculation Result |
-| :---: | :---: | :---: |
-| ![Home](docs/screenshots/01-home.png) | ![Review](docs/screenshots/03-review.png) | ![Result](docs/screenshots/04-result.png) |
-
-| Receipt (with QR) | TCC PDF Preview | Transparency Layer |
-| :---: | :---: | :---: |
-| ![Receipt](docs/screenshots/06-receipt.png) | [Generated during demo via TCC button] | ![Transparency](docs/screenshots/07-transparency.png) |
+The Nigerian tax system isn't broken because people refuse to pay — it's broken because existing tools are confusing, opaque, and demand sensitive information (BVN, NIN) before showing anything useful. TaxEasy was built directly from that survey data.
 
 ---
 
-## 3. Demo Access
+## Core User Flow
 
-- **Live Production URL:** [Insert Deployed URL Here]
-- **Demo Mode:** Append `?demo=true` to the URL (e.g., `https://taxeasy.vercel.app/?demo=true`). 
-
-*Note: Activating Demo Mode safely populates the app with 3 historical mock payments and a sample parsed GTBank statement. No real data is stored or transmitted.*
-
----
-
-## 4. Tech Stack
-
-**Next.js 14, React, TypeScript, Tailwind CSS, Supabase, @react-pdf/renderer, qrcode.react, lucide-react**
-
----
-
-## 5. Local Setup
-
-Run the project locally in under 5 minutes:
-
-1. **Clone the repository:**
-   ```bash
-   git clone https://github.com/your-org/taxeasy.git
-   cd taxeasy
-   ```
-2. **Install dependencies:**
-   ```bash
-   npm install
-   ```
-3. **Configure Environment:**
-   Copy the example environment file:
-   ```bash
-   cp .env.example .env.local
-   ```
-   *(Note: Supabase keys are optional for the core MVP runtime, as app state relies entirely on browser `localStorage`.)*
-4. **Run the Development Server:**
-   ```bash
-   npm run dev
-   ```
-5. **Open the App:**
-   Navigate to `http://localhost:3000/?demo=true` in Chrome and toggle Developer Tools to Device Mode (375px width).
-
----
-
-## 6. Project Structure
-
-```text
-├── app/                  # Next.js App Router (page.js is the main MVP state machine)
-├── components/           # Reusable React components (TccPDF)
-├── docs/                 # Architecture, Decisions, and Screenshots
-├── lib/                  # Pure utility functions (taxCalculator.ts, bankStatement.ts, transparencyData.ts)
-├── tests/                # Unit tests for the tax calculator
-├── DEMO_SCRIPT.md        # The 5-minute presentation script
-└── TECH_DEBT.md          # Technical debt and future migration plans
+```
+Sign in with Phone
+    ↓
+OTP Verification (auto-submits on 6th digit)
+    ↓
+BVN / NIN Identity Verification
+    ↓
+Face Verification (browser-native camera)
+    ↓
+Choose Income Type
+    ↓
+Upload Bank Statement PDF  ← or  Manual Tax Calculator
+    ↓
+Review Auto-Categorised Transactions
+    ↓
+View Tax Estimate
+    ↓
+Pay (Card / Bank Transfer / USSD)
+    ↓
+Download TCC PDF with QR Code
+    ↓
+Transparency Layer (see where tax goes)
 ```
 
 ---
 
-## 7. Documentation
+## Features
 
-For a deeper dive into the product thinking and technical architecture of TaxEasy, review our core documentation:
-
-- [Demo Presentation Script](DEMO_SCRIPT.md)
-- [Architecture Overview](docs/architecture.md)
-- [Decision Log](docs/DECISIONS.md)
-- [Technical Debt & Limitations](TECH_DEBT.md)
+| Feature | Description |
+|---|---|
+| 📱 **Phone + OTP auth** | 6-digit auto-submit, no confirm button needed |
+| 🪪 **BVN / NIN verification** | Seeded NIBSS-style profile from 11-digit number |
+| 📷 **Face verification** | Browser-native `FaceDetector` API, zero external deps |
+| 📄 **PDF statement parser** | GTBank format + seeded fallback for all other banks |
+| 🧮 **Tax calculator** | 2025 Nigeria PIT Reform Act bands, full relief stack |
+| 💳 **Multi-method payment** | Card, bank transfer, USSD — all simulated |
+| 📋 **TCC PDF generator** | `@react-pdf/renderer`, QR code, printable A4 |
+| 📊 **Transparency layer** | Visual breakdown of how FIRS allocates tax revenue |
+| 💾 **Session persistence** | `localStorage` — no backend login required |
 
 ---
 
-## 8. Known Limitations
+## Tech Stack
 
-The current MVP is optimized for UX demonstration and speed. It parses one representative GTBank statement format and uses seeded sample statements for other banks. It relies on `localStorage` for session history, which means data is tied to the specific browser and device. Identity verification and payments are mocked to bypass regulatory overhead, meaning the platform is not currently secure for real financial transactions. For a complete list of limitations and migration plans, see [TECH_DEBT.md](TECH_DEBT.md).
+| Layer | Technology |
+|---|---|
+| Framework | Next.js 14 (App Router) |
+| Language | TypeScript + React 18 |
+| Styling | Vanilla CSS + Tailwind CSS utility classes |
+| Icons | Lucide React |
+| PDF generation | `@react-pdf/renderer` |
+| QR codes | `qrcode.react` |
+| Charts | Recharts |
+| Face detection | Browser-native `window.FaceDetector` (Shape Detection API) |
+| Storage | Browser `localStorage` |
+| Backend (future) | Supabase (schema in `supabase-setup.sql`) |
 
 ---
 
-## 9. The Team
+## Project Structure
 
-[Team names to be added before submission]
+```
+taxeasy/
+├── app/
+│   ├── page.js          # Main SPA — single state-machine with ~30 screens
+│   ├── globals.css      # Full design system (tokens, components, animations)
+│   └── layout.js        # Root layout, meta tags, font loading
+│
+├── components/
+│   ├── FaceEngine.js    # Browser-native face detector (FaceDetector API + fallback)
+│   └── TccPDF.js        # Tax Clearance Certificate PDF renderer
+│
+├── lib/
+│   ├── taxCalculator.ts     # Nigeria 2025 PIT bands, relief calculations
+│   ├── bankStatement.ts     # PDF statement parser + seeded statement builder
+│   └── transparencyData.ts  # FIRS revenue allocation data
+│
+├── tests/
+│   └── taxCalculator.test.ts  # Unit tests for all tax calculation logic
+│
+├── docs/                # Architecture diagrams and decision logs
+├── supabase-setup.sql   # Database schema for future backend migration
+├── next.config.js       # Webpack config (fs/path polyfills for PDF renderer)
+└── tailwind.config.js   # Tailwind theme extensions
+```
 
-*TS Academy Product Management Capstone, Group [N], GovTech/Public Services theme*
+---
+
+## Local Setup
+
+**Requirements:** Node.js 18+, npm
+
+```bash
+# 1. Clone
+git clone https://github.com/your-org/taxeasy.git
+cd taxeasy
+
+# 2. Install
+npm install
+
+# 3. (Optional) Configure environment
+#    Supabase keys are only needed for the database backend — the app
+#    runs fully on localStorage without them.
+cp .env.example .env.local   # edit with your Supabase URL + anon key
+
+# 4. Start dev server
+npm run dev
+
+# 5. Open in Chrome (recommended for FaceDetector API support)
+open http://localhost:3000
+```
+
+> **Tip:** Use Chrome DevTools → Device Mode → 390px width for the best mobile experience.
+
+---
+
+## Face Verification
+
+The face verification screen uses the browser's built-in **[Shape Detection API](https://developer.mozilla.org/en-US/docs/Web/API/FaceDetector)** (`window.FaceDetector`). No external libraries, no CDN WASM downloads.
+
+| Browser | Behaviour |
+|---|---|
+| Chrome / Edge / Android Chrome | Real `FaceDetector` — detects actual face landmarks |
+| Firefox / Safari | Fallback — checks video stream is active (camera still required) |
+
+Camera access is **hard-blocked**: no camera = no proceed. The captured video frame is never stored or transmitted.
+
+---
+
+## Tax Calculation Logic
+
+Located in [`lib/taxCalculator.ts`](lib/taxCalculator.ts).
+
+**2025 Nigeria PIT Reform Act bands:**
+
+| Taxable Income | Rate |
+|---|---|
+| First ₦800,000 | 0% (exempt) |
+| Next ₦2,200,000 | 15% |
+| Next ₦9,000,000 | 18% |
+| Next ₦13,000,000 | 21% |
+| Above ₦25,000,000 | 24% |
+
+**Reliefs supported:** NHF, NHIS, pension (8% of gross), life insurance, CRA (20% of gross + ₦200,000), business expenses (from bank statement).
+
+---
+
+## Scripts
+
+```bash
+npm run dev        # Development server (http://localhost:3000)
+npm run build      # Production build
+npm run start      # Start production server
+npm run lint       # ESLint
+npm run typecheck  # TypeScript type check (no emit)
+npm run test       # Run unit tests (tax calculator)
+```
+
+---
+
+## Environment Variables
+
+Create `.env.local` for Supabase (optional):
+
+```env
+NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
+```
+
+The app is fully functional without these — all state is kept in `localStorage`.
+
+---
+
+## Known Limitations
+
+- **Bank statement parsing:** Supports GTBank format natively. All other banks use seeded sample data.
+- **Payments:** Fully simulated — no real money moves. Payment gateway integration is the next production step.
+- **Identity verification:** BVN/NIN lookup is seeded (deterministic from the input number). Real NIBSS API integration required for production.
+- **Face verification:** Uses the browser's `FaceDetector` API. Falls back to video-stream presence check on Firefox/Safari.
+- **Session storage:** `localStorage` only — no cross-device sync.
+
+See [`TECH_DEBT.md`](TECH_DEBT.md) for the full migration roadmap.
+
+---
+
+## Contributing
+
+1. Fork → create feature branch: `git checkout -b feat/your-feature`
+2. Commit: `git commit -m "feat: describe your change"`
+3. Push and open a Pull Request
+
+---
+
+## Licence
+
+MIT — see [LICENSE](LICENSE)
