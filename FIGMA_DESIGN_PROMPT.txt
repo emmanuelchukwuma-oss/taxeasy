@@ -1,0 +1,873 @@
+TAXEASY — COMPLETE FIGMA DESIGN PROMPT
+=======================================
+Paste this entire document into Figma AI, Figma's "Make designs" feature,
+or hand to a UI designer as a full specification.
+
+Generated: May 2026
+Product: TaxEasy — Nigerian Tax Filing & Payment App
+Version: 1.0 (Nigeria Tax Reform Act 2025)
+
+
+========================================
+PROJECT OVERVIEW
+========================================
+
+Design a mobile-first Nigerian tax filing and payment app called TaxEasy.
+The app targets Nigerian SMEs, freelancers, salary earners with side income,
+and informal earners. It must feel like a premium 100M Naira fintech product
+— think Paystack, Moniepoint, and Stripe combined, but tuned for Nigerian
+culture and trust signals.
+
+The app is a single-page SPA rendered inside a mobile frame (390x844px,
+iPhone 14 viewport). All screens except the dashboard have a persistent
+sidebar on desktop (1440px wide), but mobile is the primary design target.
+
+
+========================================
+DESIGN SYSTEM
+========================================
+
+COLOUR PALETTE
+--------------
+Primary Forest Green:  #064e3b   (brand primary, headers, CTAs)
+Forest Mid:            #065f46   (hover states)
+Emerald Active:        #10b981   (success states, progress, active pills)
+Emerald Light:         #34d399   (highlights, accents)
+Gold Accent:           #f59e0b   (warnings, premium indicators)
+Gold Light:            #fcd34d   (gold tints)
+Ink (text):            #0a0f0d   (body text)
+Mist (background):     #f0f4f2   (app background)
+Rose Error:            #f43f5e   (errors and destructive states)
+White:                 #ffffff
+Slate 100:             #f1f5f9   (subtle borders and dividers)
+Slate 200:             #e2e8f0   (card borders)
+Slate 400:             #94a3b8   (secondary text)
+Slate 500:             #64748b   (tertiary text)
+Emerald 50:            #ecfdf5   (tinted backgrounds)
+Emerald Green bg:      #d1fae5   (input borders when unfocused)
+
+
+TYPOGRAPHY — Inter (Google Fonts)
+----------------------------------
+Display / Hero:    Inter Black (weight 900), 28-32px, letter-spacing -0.02em
+Page title:        Inter ExtraBold (weight 800), 20-24px
+Section heading:   Inter Bold (weight 700), 16-18px
+Card label:        Inter Bold (weight 700), 12-14px, UPPERCASE, tracking 0.08em
+Body:              Inter SemiBold (weight 600), 13-14px
+Caption / meta:    Inter Medium (weight 500), 10-11px
+Mono (OTP/codes):  Inter Black (weight 900), 20px, letter-spacing 0.4em
+
+
+SPACING AND SHAPE
+-----------------
+Card border-radius:    24px (1.5rem)
+Button border-radius:  14px (0.875rem)
+Input border-radius:   14px (0.875rem)
+Icon chip radius:      12px (0.75rem)
+Card padding:          28px (1.75rem)
+Card shadow:           0 4px 16px rgba(6,78,59,0.10), 0 2px 6px rgba(6,78,59,0.06)
+Sidebar width:         280px (desktop only)
+Bottom nav height:     72px
+Top header height:     64px
+
+
+COMPONENT LIBRARY
+-----------------
+
+Primary Button (btn-primary)
+  Full-width, height 52px, border-radius 14px
+  Background: linear gradient 135deg from #064e3b to #065f46
+  Text: white, Inter ExtraBold 14px, UPPERCASE, tracking 0.05em
+  Right icon: Chevron Right or Loader spinner
+  Hover: lift shadow + 2px upward translateY
+  Disabled: opacity 40%
+
+Ghost Button (btn-ghost)
+  Transparent background, #064e3b text
+  Underline on hover
+
+Premium Card
+  White background, 24px border-radius
+  Shadow: 0 4px 16px rgba(6,78,59,0.10)
+  Border: 1px solid rgba(209,250,229,0.6)
+
+Input Row (flex-row pattern)
+  Height 52px, border-radius 14px
+  Border: 1.5px solid #d1fae5
+  Focus border: 1.5px solid #10b981 with ring glow rgba(16,185,129,0.2)
+  Left chip: 48-56px wide, bg #f8fafc, right divider border
+  Chip holds a prefix — flag + dial code, or icon + label
+  Input right side: flex-1, transparent bg, no border
+  Right side: counter or status icon (16px wide)
+
+Verified Badge
+  Pill shape, bg #ecfdf5, border #d1fae5
+  CheckCircle icon (12px) + "ID Verified" text in emerald-700
+  Font: Inter Bold 10px, UPPERCASE, tracking 0.08em
+
+Trust Strip
+  Horizontal row of 3 items, each with icon + label
+  Icons: Lock, ShieldCheck, Smartphone (12px, slate-400)
+  Labels: "NIBSS Secure" | "FIRS Compliant" | "256-bit Encrypted"
+  Font: 9px, UPPERCASE, slate-400
+
+
+========================================
+SCREEN-BY-SCREEN SPECIFICATIONS
+========================================
+
+SCREEN 1 — WELCOME / LANDING
+------------------------------
+Layout: Full-height centered card on mist (#f0f4f2) background
+
+Header block:
+  TaxEasy wordmark — "Tax" in forest-green, "Easy" in emerald, Inter Black 32px
+  Tagline: "Nigeria Tax Reform 2025 · File. Pay. Done." in slate-500 14px
+  Animated gradient orb behind logo (subtle radial, green to transparent)
+
+Hero visual:
+  Glowing shield icon (48px) inside forest-green rounded square (80x80px)
+  Below it: 3 feature pills in a horizontal row
+    "Bank Statement" / "Tax Calculator" / "BVN Verified"
+    Each pill: white bg, emerald-200 border, rounded-full, 10px text
+
+Stats strip (horizontal, 3 equal columns):
+  "N0 Hidden Fees" | "90 Seconds" | "2025 Reform Act"
+  Each: forest-green value (bold) + slate label below
+
+CTA area:
+  "Verify and Start" — Primary Button (full width)
+
+Trust Strip below button (with thin top border)
+
+
+SCREEN 2 — PHONE SIGN-IN
+--------------------------
+Layout: Single premium card, centered, no bottom nav
+
+Header:
+  Forest-green smartphone icon chip (32x32, rounded-xl)
+  Title: "Sign in with phone" ExtraBold 22px
+  Subtext: "We'll send a 6-digit OTP code to verify your number." slate-500 12px
+
+Input row:
+  Left chip: Nigerian flag emoji + "+234" SemiBold, slate-700
+  Right input: placeholder "801 234 5678", type tel, numeric keyboard
+  Helper text below: "Example: 801 234 5678 (without the leading 0)"
+
+Error state: Rose pill with error message text
+
+CTA: "Send verification code" — Primary Button
+
+
+SCREEN 3 — OTP VERIFICATION
+-----------------------------
+Layout: Single premium card, no nav
+
+Header:
+  Lock icon chip (forest-green, 32x32)
+  Title: "Verify your phone" ExtraBold 22px
+  Subtext: "Enter the 6-digit code sent to +234 [phone number]" — number in bold
+
+Input row:
+  Left chip: Lock icon + "OTP" label (10px uppercase)
+  Input: letter-spacing 0.4em, Inter Black 20px, numeric keyboard
+  Right side: "x/6" counter or Loader2 spinner during verification
+
+Progress dots (below input, 6 dots in a row, centered):
+  Empty dot: 8x8px, slate-200, rounded-full
+  Filled dot: 20x8px (pill shape, wider), emerald-500, rounded-full
+  Dots animate left to right as digits are entered
+  AUTO-SUBMITS on the 6th digit — no confirm button needed in flow
+  Show "Confirm Code" primary button as a fallback below
+
+Resend link: "Didn't receive a code? Resend" — 10px, slate-400 + emerald-700 link
+
+
+SCREEN 4 — BVN / NIN ENTRY
+----------------------------
+Layout: Two stacked premium cards, no nav
+
+Card 1 — ID Toggle:
+  Header: Fingerprint icon + "Verify Taxpayer Identity" + "SECURE NIBSS LINKAGE" badge
+  Tab switcher (2-column grid):
+    "Bank Verification (BVN)" | "National Identity (NIN)"
+    Active tab: white bg, forest-green text, shadow
+    Inactive: transparent, slate-500
+
+  Input Row:
+    Left chip: ID type icon + "BVN" or "NIN" label
+    Input: 11-digit numeric, maxLength 11
+    Right: "x/11" counter
+
+  Info box: amber pill with AlertCircle icon + "Why we need this" text
+  CTA: "Verify Identity" — Primary Button
+
+Card 2 — Privacy notice:
+  Shield icon + "Your data is encrypted" info text
+  3 bullet points: NIBSS certified | AES-256 encryption | data not stored
+
+
+SCREEN 5 — FACE VERIFICATION
+------------------------------
+Layout: Full-card, camera-dominant
+
+State 1 — IDLE:
+  Camera icon (64px) in forest-green circle (96x96)
+  Title: "Face Verification Required" ExtraBold 22px
+  Subtext: "Hold your device at eye level in good lighting"
+  3 instruction rows (icon + text):
+    "Camera access required — cannot be skipped"
+    "Ensure good lighting, face forward"
+    "Hold steady for 1 to 2 seconds"
+  Primary Button: "Open Camera and Verify Face"
+
+State 2 — DETECTING (live camera active):
+  Full-width video element (aspect-ratio 3/4, rounded-2xl)
+  Green oval guide overlay centered on video (dashed border, emerald-500)
+  Animated scan line: thin emerald line sweeping top to bottom, looping 2.5s
+  Status pill below video:
+    No face: pulsing ScanFace icon + "Position your face in the oval" slate-500
+    Face found: solid green dot + "Face Detected" emerald-700
+  Progress bar (4px tall, full width): fills 0% to 100% over 1.3s when face detected
+
+State 3 — PASSED:
+  Video replaced by large animated green checkmark circle
+  "Face Verified" — ExtraBold, emerald-700
+  "Identity confirmed — redirecting..." — 12px, slate-500
+  Confetti dots fall behind
+
+State 4 — BLOCKED (camera permission denied):
+  Red AlertCircle (48px) centered
+  "Camera Access Denied" — Bold 18px, rose-600
+  "How to fix:" with 3 numbered steps
+  "Try Again" primary button + "Go Back" ghost button
+
+
+SCREEN 6 — IDENTITY VERIFIED (BVN SUCCESS)
+--------------------------------------------
+Layout: Centered card, celebration state
+
+Animation: 60 confetti particles fall from top (green, gold, blue, pink, purple)
+
+Content:
+  Animated bouncing checkmark (80x80 green circle, SVG stroke-dashoffset draw animation)
+  "Identity Verified!" — ExtraBold 28px, forest-green
+  "Welcome, [FirstName]" — Bold 18px
+  Profile card below (white, rounded-2xl, shadow):
+    Avatar: initials in forest-green circle (48x48)
+    Name: full name, Bold 14px
+    BVN: "...8901" (masked), SemiBold 13px
+    DOB + Town: slate-500 12px
+    "NIBSS Verified" green pill badge
+
+CTA: "Continue to Dashboard" — Primary Button
+
+
+SCREEN 7 — HOME DASHBOARD
+---------------------------
+Layout: Desktop = sidebar left (280px) + main content right
+        Mobile = bottom nav (72px) + scrollable content
+
+Sidebar (desktop, 280px wide):
+  Logo: green icon + "TaxEasy" wordmark + "NIGERIA REFORM" badge
+  User profile card: initials avatar + name + "ID Verified" badge
+  Nav items (active = forest-green pill + white text + shadow):
+    Home | Tax Calculator | Statement | TCC | Transparency | History
+  Bottom: phone number + "Sign Out" button
+
+Mobile Bottom Nav (72px tall):
+  5 icons: Home | Tax Calc | Statement | TCC | Transparency
+  Active: forest-green icon + label, indicator dot or underline
+  Inactive: slate-400 icon + label
+
+Main content — Hero card:
+  "Good morning, [Name]" ExtraBold 22px
+  "Tax Year 2025 · Reform Act Ready" — emerald-600 badge
+  2 action cards side by side:
+    "Upload Statement" — forest-green gradient, white text
+    "Manual Calculator" — white, forest-green text, border
+
+Quick stats strip (3 equal columns):
+  Last filing date | Total paid | TCC status
+
+Recent activity card:
+  "Filing History" header + See All link
+  3 most recent filings (reference, amount, status badge, date)
+
+
+SCREEN 8 — INCOME TYPE SELECTION
+----------------------------------
+Layout: Card with option grid
+
+Header: "Select your income source" — ExtraBold
+
+Option grid (2x2 then 1 full-width):
+  Each option: icon (24px) + title Bold + subtitle slate-500 12px
+  "Salary / Employment" — "PAYE deducted at source"
+  "Freelance / Contract" — "Project-based income"
+  "Small Business" — "Trade or retail income"
+  "Rental Income" — "Property rental earnings"
+  "Multiple Sources" — "Salary + side income"
+
+  Selected state: forest-green border (2px), emerald-50 bg, checkmark top-right
+  Unselected: slate-200 border, white bg
+
+CTA: "Continue" — Primary Button (disabled until a selection is made)
+
+
+SCREEN 9 — ANNUAL INCOME INPUT
+--------------------------------
+Layout: Card with currency inputs
+
+Header: ReceiptText icon + "Annual Income" + tax year badge
+
+Primary input:
+  Label: "ANNUAL INCOME (N)" — uppercase, 10px, forest-green
+  Input Row: Left chip = N symbol + "NAIRA"
+  Input: large numeric, currency formatted with commas, 18px SemiBold
+
+Toggle — Side income:
+  "Add side income?" with animated on/off pill toggle (emerald when on)
+  When toggled ON: second input row slides down with animation
+
+Optional deductions (collapsed by default):
+  "Advanced deductions" toggle with ChevronDown icon
+  Expands to show: Pension | NHF | NHIS | Life Insurance | Annual Rent
+
+CTA: "Calculate My Tax" — Primary Button
+
+
+SCREEN 10 — DEDUCTIONS AND RELIEFS WIZARD
+-------------------------------------------
+Layout: Card with expandable toggle rows
+
+Header: DollarSign icon + "Deductions and Reliefs"
+
+Toggle rows (each row has):
+  Left: icon (16px) + relief name + subtitle
+  Right: on/off pill toggle (emerald when active)
+  Expands downward to show N input row when toggled on
+
+Relief items:
+  Pension (8% of gross — auto-calculated)
+  NHF (National Housing Fund)
+  NHIS (Health Insurance)
+  Life Insurance Premium
+  Annual Rent
+
+Running total card (desktop sidebar):
+  "Estimated Deductions" heading
+  Each active relief listed: label + amount
+  Total deduction amount in emerald-600
+
+
+SCREEN 11 — TAX RESULT / ESTIMATE
+------------------------------------
+Layout: Multi-card scrollable view
+
+Header card — The Big Number:
+  "Your Tax Estimate" — small UPPERCASE label
+  Large tax amount in N — Inter Black 36px, forest-green
+  "per year" sub-label in slate-500
+  Monthly amount — emerald pill badge
+
+Tax Band Breakdown card:
+  Table: Band | Rate | Tax
+  Alternating white and emerald-50 row stripes
+  Progress bar under each band row showing % of income
+  Total row: bold, forest-green bg, white text
+
+Deductions Summary card:
+  CRA, Pension, NHF etc. listed with amounts
+  "Total Reliefs" total in emerald at bottom
+
+What this means card:
+  3 context items with Sparkles icon:
+    "This is your estimated annual PAYE liability"
+    "Monthly equivalent for budgeting"
+    "Actual liability may differ by state"
+
+CTA Buttons:
+  "Proceed to Payment" — Primary Button (forest-green gradient)
+  "Recalculate" — Ghost Button
+
+
+SCREEN 12 — PAYMENT METHOD SELECTION
+--------------------------------------
+Layout: Card with radio method selector
+
+Header: CreditCard icon + "Choose Payment Method"
+
+Method options (full-width radio cards):
+  Each has: left icon (24px) + title Bold 14px + subtitle slate-500 12px + right radio circle
+  Card Payment — "Visa, Mastercard, Verve"
+  Bank Transfer — "Direct bank transfer to virtual account"
+  USSD — "*737# and other bank codes"
+
+  Selected state: forest-green border (2px) + emerald-50 bg + filled green radio dot
+
+Summary card below:
+  Assessable tax: NXXX,XXX
+  Service fee: NX,XXX
+  Divider line
+  Total: NXXX,XXX Bold forest-green
+
+CTA: "Continue to Payment" — Primary Button
+
+
+SCREEN 12A — CARD PAYMENT DETAIL
+----------------------------------
+Layout: Live card preview (top) + form (bottom)
+
+Live card preview (340px wide, standard 1.586 aspect ratio):
+  Forest-green gradient card (3D CSS, perspective 900px)
+  Gold chip rectangle top-left
+  Card number: live 4-group display with bullet placeholders
+  Cardholder name: live uppercase display
+  Expiry: live MM/YY display
+  Network label top-right: Visa / Mastercard / Verve (auto-detected)
+  CVV FOCUS: card flips 180 degrees on Y-axis (0.42s cubic-bezier)
+    Back face shows CVV field with masked dots
+
+Card form fields (Input Row pattern for each):
+  Card Number — auto-formatted XXXX XXXX XXXX XXXX, Luhn validation
+  Expiry — MM/YY format, validates future date
+  CVV — 3 digits, triggers card flip on focus
+  Name on Card — auto-uppercased, letters only
+
+Error banner: rose-50 bg, AlertCircle icon, error text
+
+Amount summary: emerald-50 bg — "Total to charge: NXXX,XXX"
+
+CTA: "Pay NXXX,XXX Securely" — Primary Button with ShieldCheck icon
+  Disabled until all 4 fields pass validation
+
+Trust strip: 256-bit SSL | PCI DSS | 3D Secure
+
+
+SCREEN 12B — BANK TRANSFER DETAIL
+-----------------------------------
+Layout: Single premium card
+
+Header: Landmark icon + "Bank Transfer Details"
+Subtext: "Transfer the exact amount below, then tap I Have Paid"
+
+Amount to transfer (prominent box):
+  Amber/gold background, large text (3xl bold)
+  "Transfer exact amount — do not round up or down"
+
+Virtual account details card (divided rows):
+  Bank Name
+  Account Number (monospace, large)
+  Account Name: "FIRS / TAXEASY COLLECTIONS"
+  Amount
+  Reference number
+  Each row has a copy icon button on the right
+
+"Copy All Details" button:
+  Full-width, forest-green border, white bg
+  On copy: flashes green — "Copied to clipboard!" with checkmark
+
+Countdown timer:
+  "Account expires in MM:SS"
+  Normal: slate-50 bg, slate text
+  Under 5 minutes: rose-50 bg, rose text, pulsing animation
+
+"I Have Paid — Confirm Transfer" — Primary Button with CheckCircle icon
+  Opens confirmation bottom sheet (slides up from bottom):
+    Handle bar at top
+    "Confirm Payment" heading
+    "Have you completed the transfer of NXXX,XXX to [Bank]?"
+    "Yes, I Have Paid" — Primary Button
+    "Not yet — go back" — plain text button
+
+
+SCREEN 12C — USSD PAYMENT DETAIL
+----------------------------------
+Layout: Single premium card
+
+Header: Smartphone icon + "USSD Payment"
+Subtext: "Select your bank, then dial the code below"
+
+Bank selector pills (wrapping row):
+  GTBank | Access | Zenith | UBA | First Bank
+  Active: forest-green bg, white text
+  Inactive: white bg, slate-200 border
+
+USSD code display box:
+  forest-green border (2px), emerald-50 bg
+  Bank label above code
+  Code in monospace 3xl bold forest-green (e.g. *737*58*50000#)
+  Updates live when bank is selected
+
+Amount row: amber-50 bg — "Amount: NXXX,XXX"
+
+"Dial [code] Now" — Primary Button with Smartphone icon
+  Uses tel: deep link to open native phone dialler with code pre-filled
+
+"I Have Paid" — outline button (forest-green border + text)
+  Opens same confirmation bottom sheet as bank transfer
+
+Note: "After dialling, follow your bank's prompts. Then tap I Have Paid."
+
+
+SCREEN 13 — PAYMENT PROCESSING
+--------------------------------
+Layout: Full-screen, no nav, no header
+
+Animated content (vertically centred):
+  Circular spinner — forest-green, 64px diameter, 4px stroke, rotating
+  "Processing Livelihood Settlement" — Bold 18px
+  "Do not close or refresh" — 12px, slate-500
+  Progress steps fading in sequentially (800ms each):
+    Establishing secure connection to NIBSS API
+    Validating secure identity credentials
+    Processing monetary remittance
+    Confirming Federal Tax ID remittance
+    Generating verified Tax Clearance Certificate
+
+Subtle green pulse ring expanding from center of spinner
+
+
+SCREEN 14 — PAYMENT SUCCESS
+-----------------------------
+Layout: Full-height celebration
+
+60 confetti particles fall from top (random X, staggered delays, colours: green, gold, blue, pink, purple)
+
+Checkmark animation:
+  96x96 circle, forest-green fill
+  White checkmark SVG path draws in with stroke-dashoffset animation (0.6s)
+
+Content:
+  "Remittance Complete!" — ExtraBold 28px
+  Reference: "TXE-2026-XXXXX" — monospace pill, emerald-50 bg
+  Amount paid — Inter Black 28px
+  Date — slate-500
+
+CTA buttons (stacked):
+  "View Digital Receipt" — Primary Button
+  "Download TCC" — Secondary Button (forest-green border, white bg)
+
+
+SCREEN 15 — DIGITAL RECEIPT
+-----------------------------
+Layout: White "paper" card, shadow, scrollable
+
+Header strip:
+  TaxEasy wordmark left + "OFFICIAL TAX RECEIPT" uppercase badge right
+  Thin forest-green top border (4px)
+
+Receipt rows (label:value pairs):
+  Reference | Payment Date | Taxpayer Name | BVN | Tax Year | Amount | Service Fee | Total (bold)
+  Status badge: "PAID" — emerald pill
+
+QR Code block (centered):
+  120x120px QR code (black on white)
+  "Scan to verify this receipt" — slate-500 12px below
+
+Signature line:
+  "Issued by TaxEasy · FIRS Compliant · [date]"
+  Forest-green watermark text at bottom
+
+Actions:
+  Share button (Share2 icon) | Print button (Printer icon)
+
+
+SCREEN 16 — TAX CLEARANCE CERTIFICATE (TCC)
+---------------------------------------------
+Layout: A4-style portrait document card
+
+Certificate design:
+  Forest-green header band (full width, 80px tall)
+  "FEDERAL INLAND REVENUE SERVICE" — uppercase white text
+  "TAX CLEARANCE CERTIFICATE" — ExtraBold 20px, white
+  Gold horizontal rule below header
+
+Body content:
+  "This is to certify that:" in italic
+  Taxpayer name: Bold 18px
+  BVN: masked (7 dots + last 4 digits)
+  Tax Year: 2025
+  Amount Paid: NXXX,XXX
+  Issue Date, Valid Until, TCC Reference
+
+Official seal:
+  Circular green badge (64px), shield or eagle icon + "FIRS"
+  Positioned bottom-right
+
+QR code: bottom-left, 80x80px
+
+"Download PDF" button — gold gradient, white text
+
+
+SCREEN 17 — FILING HISTORY
+----------------------------
+Layout: Scrollable list
+
+Header: History icon + "Filing History" + count badge (emerald pill)
+
+Each history item (card):
+  Left: colour-coded status icon (CheckCircle green, AlertCircle amber)
+  Centre: reference code + date
+  Right: amount Bold + status badge ("PAID" green, "PENDING" amber)
+  Bottom row: payment method chip + TCC link
+
+Empty state:
+  History icon (64px, slate-200) centred
+  "No filings yet" — slate-500
+  "Start your first filing" — emerald link
+
+
+SCREEN 18 — UPLOAD BANK STATEMENT
+-----------------------------------
+Layout: Card with upload area
+
+Header: UploadCloud icon + "Upload Bank Statement"
+
+Bank selector pills (horizontal scroll):
+  GTBank | Access | Zenith | UBA | First Bank | Other
+  Active: forest-green bg, white text
+  Inactive: white bg, slate border
+
+Upload dropzone:
+  Dashed border (2px, emerald-300), rounded-2xl (24px)
+  Height: about 80px, centred content
+  UploadCloud icon (32px, emerald-500) + "Drop PDF here or tap to browse"
+  Sub-label: "Bank statement PDF · Max 10MB"
+  On hover/drag-over: emerald-50 fill
+
+File selected state:
+  FileText icon (24px, emerald) + filename + X delete button
+  "Parsing statement..." spinner + thin progress bar
+
+"Generate Seeded Statement" button:
+  Wand2 icon (gentle pulse) + "Generate Seeded Statement for [Bank]"
+  Style: emerald-50 bg, emerald-800 text, emerald-200 border
+
+
+SCREEN 19 — STATEMENT REVIEW / TRANSACTION CATEGORISER
+---------------------------------------------------------
+Layout: Scrollable table with sticky header
+
+Header card:
+  Bank name + account period
+  3 summary pills: Total Credit | Total Debit | Transaction count
+
+Filter bar (horizontal scroll):
+  "All" | "Income" | "Business Expenses" | "Personal" | "Transfers" pills
+
+Transaction list rows:
+  Left: direction icon (up arrow = credit = emerald, down arrow = debit = rose)
+  Centre: narration text (truncated) + date below in small
+  Right: amount (emerald for credit, rose for debit) + category dropdown
+  Category dropdown: pill with chevron, options: Income | Business Expense | Personal | Transfer
+
+Summary footer (sticky at bottom):
+  Gross Income: NXXX,XXX (emerald)
+  Business Expenses: NXXX,XXX (slate)
+  Taxable Net: NXXX,XXX (forest-green Bold)
+  "Calculate Tax" — Primary Button
+
+
+SCREEN 20 — TRANSPARENCY LAYER
+--------------------------------
+Layout: Multi-section scroll
+
+Header card:
+  Landmark icon + "National Trust and Impact"
+  "See exactly where your tax goes" — slate-500
+
+Tax allocation chart (donut or horizontal bar):
+  Education: 28% (blue)
+  Infrastructure: 22% (forest-green)
+  Healthcare: 18% (emerald)
+  Security: 15% (amber)
+  Administration: 10% (slate)
+  Social Welfare: 7% (rose)
+
+State-level breakdown card:
+  Your state (Lagos / FCT) with:
+    3 projects funded this year (bullet list)
+    Per-capita spend figure
+    Progress bars toward annual targets
+
+Community impact stats (3 cards):
+  "12,400 schools funded" | "N2.4T collected" | "89% compliance rate"
+
+Your contribution card:
+  "Your [year] contribution"
+  Pie slice graphic: your tax vs. total pool
+  "Your NXXX,XXX helped fund..." — 3 impact items with Sparkles icon
+
+
+========================================
+LAYOUT SHELLS
+========================================
+
+MOBILE SHELL (390px, screens 1-6 and all auth screens)
+  Background: #f0f4f2
+  Scrollable inner: max-width 390px, centred
+  No bottom nav on: welcome, phone, otp, bvnEntry, faceVerification,
+    bvnSuccess, paymentProcessing, cardPayment, bankTransfer, ussdPayment
+
+APP SHELL (screens 7+ when logged in)
+
+  Mobile (under 1024px wide):
+    Top header: 64px, white, drop shadow
+      Left: back arrow (ArrowLeft 16px) when sub-screen active
+      Centre: screen title SemiBold 14px forest-green
+      Right: user initials avatar (32x32, forest-green bg)
+    Bottom nav: 72px, white, shadow pointing up, 5 items
+    Content: scrollable, 16px padding, 88px padding-bottom
+
+  Desktop (1024px and wider):
+    Sidebar: fixed 280px left, full height, white, right border
+    Main area: left margin 280px, flex column, header + scrollable content
+    Content max-width: 768px, centred in main area
+
+
+========================================
+MICRO-ANIMATIONS SPECIFICATION
+========================================
+
+Screen transition         fadeInUp (opacity 0 to 1, Y 20px to 0)       300ms  ease-out
+Card appear               scaleIn (opacity 0 to 1, scale 0.94 to 1)     250ms  ease-out
+Success checkmark         stroke-dashoffset SVG draw                     600ms  ease-in-out
+Confetti dots             fall from top + fade out                       2.5-4.5s  linear
+OTP progress dot          width 8px to 20px + colour change              200ms  ease-in-out
+Input focus               border-colour + ring glow                      150ms  ease
+Camera scan line          top 4% to 92% to 4% loop                      2.5s   linear
+Face detected pill        opacity fade in                                300ms  ease
+Payment spinner           rotate 360 degrees loop                        800ms  linear
+Payment steps             opacity 0 to 1, sequential                    800ms each  ease
+Sidebar nav active        background fill slide                          200ms  ease-out
+Toggle switch             translate + colour change                      200ms  spring
+Option card select        border-colour + bg colour                      150ms  ease
+Card payment flip         rotateY 0 to 180 degrees (CVV focus)          420ms  cubic-bezier
+Copy button flash         bg flash green then back                       1.4s   ease
+Countdown timer urgent    opacity 1 to 0.45 pulse                        0.9s   ease-in-out infinite
+
+
+========================================
+PROTOTYPE FLOW MAP
+========================================
+
+[Welcome]
+    -- "Verify and Start" button -->
+[Phone Sign-In]
+    -- "Send verification code" (900ms loading) -->
+[OTP Verification]
+    -- 6th digit auto-submit (800ms delay) -->
+[BVN / NIN Entry]
+    -- "Verify Identity" (simulated NIBSS lookup) -->
+[Face Verification]
+    -- 40 frames face detected (~1.3s) auto-advance -->
+[Identity Verified / BVN Success]
+    -- "Continue to Dashboard" -->
+[Home Dashboard]
+
+From Home -- "Upload Statement" card:
+  [Upload Bank Statement]
+      -- PDF selected or seeded generated -->
+  [Statement Review / Categorise]
+      -- "Calculate Tax" -->
+
+From Home -- "Manual Calculator" card:
+  [Income Type Selection]
+      -->
+  [Annual Income Input]
+      -->
+  [Deductions and Reliefs Wizard]
+      -- "Calculate My Tax" -->
+
+Both paths converge at:
+  [Tax Result / Estimate]
+      -- "Proceed to Payment" -->
+  [Payment Method Selection]
+      -- "Continue to Payment" -->
+
+      CARD selected:
+      [Card Payment Detail]
+          -- "Pay Securely" (valid card) -->
+
+      BANK TRANSFER selected:
+      [Bank Transfer Detail]
+          -- "I Have Paid" -- confirm sheet -- "Yes" -->
+
+      USSD selected:
+      [USSD Payment Detail]
+          -- "I Have Paid" -- confirm sheet -- "Yes" -->
+
+  [Payment Processing] (animated, ~4 seconds)
+      -- auto-advance -->
+  [Payment Success]
+      -- "View Digital Receipt" -->
+  [Digital Receipt]
+      -- "Download TCC" or sidebar nav -->
+  [Tax Clearance Certificate]
+
+Side nav destinations (accessible any time post-login):
+  Filing History
+  Transparency Layer
+  Home Dashboard
+
+
+========================================
+ADDITIONAL DESIGN NOTES
+========================================
+
+1. NIGERIAN CULTURAL SIGNALS
+   Use N symbol everywhere (not NGN or USD).
+   Show Nigerian flag emoji on phone number input.
+   Reference FIRS (Federal Inland Revenue Service), NIBSS (Nigeria Inter-Bank
+   Settlement System), and BVN prominently — these build trust with Nigerian users.
+
+2. TRUST SIGNALS THROUGHOUT
+   Every screen involving ID data or payment should display a small trust strip:
+   "NIBSS Secure · FIRS Compliant · 256-bit Encrypted"
+
+3. GLASSMORPHISM ACCENTS
+   The hero card on Welcome and the Payment Success screen use subtle glass overlays:
+   rgba(255,255,255,0.72) backdrop with blur effect.
+
+4. DARK MODE
+   Not implemented — the app is light-mode only.
+   Palette: forest green / white / mist.
+
+5. ACCESSIBILITY
+   All interactive elements need a minimum 44x44px tap target.
+   Contrast ratio must be at least 4.5:1 for all body text.
+   Focus rings must be visible on keyboard navigation.
+
+6. RESPONSIVE BREAKPOINTS
+   Mobile: 390px (primary design target)
+   Tablet: 768px (same layout as mobile, wider cards)
+   Desktop: 1024px and above (sidebar appears, content max-width 768px)
+
+7. EMPTY STATES
+   Every list screen (History, Transparency) must have an illustrated empty state:
+   subtle large icon + descriptive text + call to action link.
+
+8. LOADING STATES
+   Every async action shows a Loader2 spinner (rotating) inline in the button.
+   Data loading areas use skeleton card placeholders (grey shimmer).
+
+9. ERROR STATES
+   Rose-600 text on rose-50 background, rounded-xl, with AlertCircle icon (16px).
+   Appears immediately below the relevant input field.
+
+10. THE CONFETTI
+    Used on exactly 2 screens: BVN Success and Payment Success.
+    60 coloured dots: emerald, gold, blue, pink, purple.
+    Each falls from a random X position with a staggered delay (0 to 3 seconds).
+    Each dot: random size (6-14px), random fall duration (2.5-4.5 seconds).
+
+
+========================================
+END OF DOCUMENT
+========================================
+TaxEasy v1.0 — Nigeria Tax Reform Act 2025
+Built with Next.js 14, Tailwind CSS, Inter font, Lucide icons
+GitHub: github.com/emmanuelchukwuma-oss/taxeasy
