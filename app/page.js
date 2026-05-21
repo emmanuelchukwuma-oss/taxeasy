@@ -66,29 +66,32 @@ const formatNaira = (value) =>
     .replace("NGN", "₦");
 
 const SCREEN_TITLES = {
-  welcome: "TaxEasy",
-  phone: "Sign in",
-  otp: "Verify phone",
-  bvnEntry: "BVN Verification",
+  welcome:          "TaxEasy",
+  phone:            "Sign in",
+  otp:              "Verify phone",
+  bvnEntry:         "BVN Verification",
   faceVerification: "Face Scan",
-  bvnSuccess: "Identity Verified",
-  home: "Home Dashboard",
-  incomeType: "Income Source",
-  incomeInput: "Annual Income",
+  bvnSuccess:       "Identity Verified",
+  home:             "Home Dashboard",
+  incomeType:       "Income Source",
+  incomeInput:      "Annual Income",
   deductionsWizard: "Deductions & Reliefs",
-  result: "Your Tax Estimate",
-  paymentMethod: "Payment Method",
-  paymentProcessing: "Processing Payment",
-  paymentSuccess: "Remittance Complete",
-  receipt: "Digital Receipt",
-  history: "Filing History",
-  tcc: "Tax Clearance Certificate",
-  transparency: "National Trust & Impact",
-  statementUpload: "Upload Bank Statement",
-  statementReview: "Verify Transactions",
+  result:           "Your Tax Estimate",
+  paymentMethod:    "Payment Method",
+  cardPayment:      "Card Payment",
+  bankTransfer:     "Bank Transfer",
+  ussdPayment:      "USSD Payment",
+  paymentProcessing:"Processing Payment",
+  paymentSuccess:   "Remittance Complete",
+  receipt:          "Digital Receipt",
+  history:          "Filing History",
+  tcc:              "Tax Clearance Certificate",
+  transparency:     "National Trust & Impact",
+  statementUpload:  "Upload Bank Statement",
+  statementReview:  "Verify Transactions",
 };
 
-const BOTTOM_NAV_HIDDEN_SCREENS = ["welcome", "phone", "otp", "bvnEntry", "faceVerification", "bvnSuccess", "paymentProcessing"];
+const BOTTOM_NAV_HIDDEN_SCREENS = ["welcome", "phone", "otp", "bvnEntry", "faceVerification", "bvnSuccess", "paymentProcessing", "cardPayment", "bankTransfer", "ussdPayment"];
 const STATEMENT_FLOW_SCREENS = [
   "statementUpload",
   "statementReview",
@@ -353,12 +356,31 @@ export default function TaxEasyPremium() {
   const [statementParseLoading, setStatementParseLoading] = useState(false);
   const [statementError, setStatementError] = useState("");
 
-  // Payment states
-  const [identityType, setIdentityType] = useState("bvn");
+  // ── Payment state ─────────────────────────────────────────────────────────
+  const [identityType,   setIdentityType]   = useState("bvn");
   const [identityNumber, setIdentityNumber] = useState("");
-  const [paymentMethod, setPaymentMethod] = useState("card");
+  const [paymentMethod,  setPaymentMethod]  = useState("card");
   const [paymentLoading, setPaymentLoading] = useState(false);
-  const [paymentRecord, setPaymentRecord] = useState(null);
+  const [paymentRecord,  setPaymentRecord]  = useState(null);
+
+  // Card payment fields
+  const [cardNumber,  setCardNumber]  = useState("");
+  const [cardExpiry,  setCardExpiry]  = useState("");
+  const [cardCvv,     setCardCvv]     = useState("");
+  const [cardName,    setCardName]    = useState("");
+  const [cardFlipped, setCardFlipped] = useState(false);
+  const [cardError,   setCardError]   = useState("");
+  const [cardCopied,  setCardCopied]  = useState(false);
+
+  // Bank transfer — generated virtual account
+  const [virtualAccount,    setVirtualAccount]    = useState(null);
+  const [transferCopied,    setTransferCopied]    = useState(false);
+  const [confirmSheetOpen,  setConfirmSheetOpen]  = useState(false);
+  const [transferCountdown, setTransferCountdown] = useState(1800); // 30 min in seconds
+  const countdownRef = useRef(null);
+
+  // USSD bank selector
+  const [ussdBank, setUssdBank] = useState("GTBank");
 
   // Payment processing steps simulation
   const [processingStep, setProcessingStep] = useState(0);
@@ -367,7 +389,7 @@ export default function TaxEasyPremium() {
     "Validating secure identity credentials...",
     "Processing monetary remittance...",
     "Confirming Federal Tax ID remittance...",
-    "Generating verified Tax Clearance Certificate (TCC)..."
+    "Generating verified Tax Clearance Certificate (TCC)...",
   ];
 
   const canContinuePhone = phone.trim().replace(/\s/g, "").length >= 10;
@@ -526,6 +548,114 @@ export default function TaxEasyPremium() {
     }, 900);
   };
 
+  // ── Card helpers ──────────────────────────────────────────────────────────
+  const formatCardNumber = (raw) =>
+    raw.replace(/\D/g, "").slice(0, 16).replace(/(\d{4})(?=\d)/g, "$1 ");
+
+  const formatExpiry = (raw) => {
+    const d = raw.replace(/\D/g, "").slice(0, 4);
+    return d.length >= 3 ? d.slice(0, 2) + "/" + d.slice(2) : d;
+  };
+
+  const luhnValid = (num) => {
+    const d = num.replace(/\D/g, "");
+    if (d.length < 13) return false;
+    let sum = 0;
+    [...d].reverse().forEach((c, i) => {
+      let n = parseInt(c);
+      if (i % 2 === 1) { n *= 2; if (n > 9) n -= 9; }
+      sum += n;
+    });
+    return sum % 10 === 0;
+  };
+
+  const cardNetwork = (num) => {
+    const n = num.replace(/\s/g, "");
+    if (/^4/.test(n))         return { label: "Visa",       color: "#1a1f71" };
+    if (/^5[1-5]/.test(n))   return { label: "Mastercard", color: "#eb001b" };
+    if (/^5[6-9]|^6/.test(n)) return { label: "Verve",     color: "#007b40" };
+    return null;
+  };
+
+  const expiryValid = (exp) => {
+    if (!/^\d{2}\/\d{2}$/.test(exp)) return false;
+    const [m, y] = exp.split("/").map(Number);
+    if (m < 1 || m > 12) return false;
+    const now = new Date();
+    const expDate = new Date(2000 + y, m - 1, 1);
+    return expDate > now;
+  };
+
+  const canSubmitCard =
+    luhnValid(cardNumber) &&
+    expiryValid(cardExpiry) &&
+    cardCvv.replace(/\D/g, "").length >= 3 &&
+    cardName.trim().length >= 2;
+
+  // ── Bank transfer helpers ─────────────────────────────────────────────────
+  const generateVirtualAccount = () => {
+    const seed   = (identityNumber || "0000000000").replace(/\D/g, "").slice(-4).padStart(4, "0");
+    const amount = calculation?.totalAmountDueNaira || 0;
+    const suffix = String(amount).slice(-4).padStart(4, "0");
+    const acctNo = `903${seed}${suffix}`.slice(0, 10);
+    const banks  = ["Wema Bank", "Sterling Bank", "Providus Bank", "Fidelity Bank"];
+    const bank   = banks[parseInt(seed, 10) % banks.length];
+    setVirtualAccount({
+      bank,
+      accountNumber: acctNo,
+      accountName:   "FIRS / TAXEASY COLLECTIONS",
+    });
+    setTransferCountdown(1800);
+    // Start 30-min countdown
+    if (countdownRef.current) clearInterval(countdownRef.current);
+    countdownRef.current = setInterval(() => {
+      setTransferCountdown((s) => {
+        if (s <= 1) { clearInterval(countdownRef.current); return 0; }
+        return s - 1;
+      });
+    }, 1000);
+  };
+
+  const formatCountdown = (secs) => {
+    const m = String(Math.floor(secs / 60)).padStart(2, "0");
+    const s = String(secs % 60).padStart(2, "0");
+    return `${m}:${s}`;
+  };
+
+  // ── USSD helpers ──────────────────────────────────────────────────────────
+  const USSD_BANKS = [
+    { bank: "GTBank",     code: (amt) => `*737*58*${amt}#` },
+    { bank: "Access",     code: (amt) => `*901*${amt}#`    },
+    { bank: "Zenith",     code: (amt) => `*966*${amt}#`    },
+    { bank: "UBA",        code: (amt) => `*919*${amt}#`    },
+    { bank: "First Bank", code: (amt) => `*894*${amt}#`    },
+  ];
+
+  const ussdCode = () => {
+    const amt  = calculation?.totalAmountDueNaira || 0;
+    const bank = USSD_BANKS.find((b) => b.bank === ussdBank) || USSD_BANKS[0];
+    return bank.code(amt);
+  };
+
+  // ── Payment routing ───────────────────────────────────────────────────────
+  // Routes from paymentMethod → method-specific detail screen
+  const handleProceedToPayment = () => {
+    setCardError("");
+    if (paymentMethod === "card")          { setScreen("cardPayment"); }
+    if (paymentMethod === "bank_transfer") { generateVirtualAccount(); setScreen("bankTransfer"); }
+    if (paymentMethod === "ussd")          { setScreen("ussdPayment"); }
+  };
+
+  // Copy to clipboard helper
+  const copyToClipboard = async (text, setCopied) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch (_) {}
+  };
+
+  // ── Core payment processor (unchanged) ───────────────────────────────────
   const handlePay = () => {
     if (!calculation) return;
     setPaymentLoading(true);
@@ -2087,12 +2217,254 @@ export default function TaxEasyPremium() {
 
                   <button
                     type="button"
-                    onClick={handlePay}
+                    onClick={handleProceedToPayment}
                     disabled={paymentLoading}
                     className="btn-primary"
                   >
-                    Confirm & Settle {formatNaira(calculation.totalAmountDueNaira)}
+                    Continue to Payment →
                   </button>
+                </section>
+              )}
+
+              {/* ── CARD PAYMENT ─────────────────────────────────────────── */}
+              {screen === "cardPayment" && calculation && (
+                <section className="space-y-4 screen-enter">
+                  {/* Live card preview */}
+                  <div className="card-scene mx-auto" style={{ maxWidth: 360 }}>
+                    <div className={`card-inner ${cardFlipped ? "flipped" : ""}`}>
+                      <div className="card-face flex flex-col justify-between p-6" style={{ background: "linear-gradient(135deg,#064e3b 0%,#065f46 60%,#0d9488 100%)" }}>
+                        <div className="flex items-start justify-between">
+                          <div className="w-10 h-7 rounded-md" style={{ background: "linear-gradient(135deg,#fcd34d,#f59e0b)" }} />
+                          <span className="text-xs font-black text-white/70 tracking-widest">{cardNetwork(cardNumber)?.label || ""}</span>
+                        </div>
+                        <div>
+                          <p className="font-mono text-xl font-black text-white tracking-[0.25em] mb-3" style={{ minHeight: 28 }}>
+                            {(cardNumber || "").padEnd(16,"•").match(/.{1,4}/g)?.join(" ")}
+                          </p>
+                          <div className="flex justify-between items-end">
+                            <div>
+                              <p className="text-[9px] text-white/50 uppercase tracking-widest mb-0.5">Card Holder</p>
+                              <p className="text-sm font-bold text-white uppercase tracking-wider">{cardName || "FULL NAME"}</p>
+                            </div>
+                            <div className="text-right">
+                              <p className="text-[9px] text-white/50 uppercase tracking-widest mb-0.5">Expires</p>
+                              <p className="text-sm font-bold text-white">{cardExpiry || "MM/YY"}</p>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="card-back flex flex-col justify-center">
+                        <div className="w-full h-10 bg-black/40 mb-4" />
+                        <div className="mx-6">
+                          <p className="text-[9px] text-white/50 uppercase tracking-widest mb-1">CVV</p>
+                          <div className="bg-white/20 rounded-lg px-4 py-2 flex justify-end">
+                            <span className="font-mono font-black text-white tracking-widest">{cardCvv ? "•".repeat(cardCvv.length) : "•••"}</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Card form */}
+                  <div className="premium-card p-6 space-y-4">
+                    <div className="space-y-1">
+                      <h2 className="text-xl font-extrabold text-[#064e3b]">Enter card details</h2>
+                      <p className="text-xs text-slate-500">Visa · Mastercard · Verve accepted</p>
+                    </div>
+
+                    <div className="input-flex-wrap">
+                      <span className="input-left-chip"><CreditCard className="h-4 w-4 text-[#064e3b]" /><span className="text-[10px] font-black text-[#064e3b] uppercase tracking-wider">Card No</span></span>
+                      <input type="tel" inputMode="numeric" placeholder="0000 0000 0000 0000" value={cardNumber} onChange={(e) => setCardNumber(formatCardNumber(e.target.value))} className="input-right-field font-mono tracking-widest" maxLength={19} />
+                      {cardNetwork(cardNumber) && <span className="pr-3 text-[10px] font-black" style={{ color: cardNetwork(cardNumber).color }}>{cardNetwork(cardNumber).label}</span>}
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="input-flex-wrap">
+                        <span className="input-left-chip"><Calendar className="h-4 w-4 text-[#064e3b]" /><span className="text-[10px] font-black text-[#064e3b] uppercase tracking-wider">Exp</span></span>
+                        <input type="tel" inputMode="numeric" placeholder="MM/YY" value={cardExpiry} onChange={(e) => setCardExpiry(formatExpiry(e.target.value))} className="input-right-field font-mono" maxLength={5} />
+                      </div>
+                      <div className="input-flex-wrap">
+                        <span className="input-left-chip"><Lock className="h-4 w-4 text-[#064e3b]" /><span className="text-[10px] font-black text-[#064e3b] uppercase tracking-wider">CVV</span></span>
+                        <input type="tel" inputMode="numeric" placeholder="•••" value={cardCvv} onChange={(e) => setCardCvv(e.target.value.replace(/\D/g,"").slice(0,4))} onFocus={() => setCardFlipped(true)} onBlur={() => setCardFlipped(false)} className="input-right-field font-mono tracking-widest" maxLength={4} />
+                      </div>
+                    </div>
+
+                    <div className="input-flex-wrap">
+                      <span className="input-left-chip"><UserCheck className="h-4 w-4 text-[#064e3b]" /><span className="text-[10px] font-black text-[#064e3b] uppercase tracking-wider">Name</span></span>
+                      <input type="text" placeholder="Full name as on card" value={cardName} onChange={(e) => setCardName(e.target.value.toUpperCase())} className="input-right-field uppercase" autoComplete="cc-name" />
+                    </div>
+
+                    {cardError && (
+                      <div className="flex items-center gap-2 p-3 rounded-xl bg-rose-50 border border-rose-200">
+                        <AlertCircle className="h-4 w-4 text-rose-500 shrink-0" />
+                        <p className="text-xs text-rose-600 font-semibold">{cardError}</p>
+                      </div>
+                    )}
+
+                    <div className="flex justify-between items-center px-4 py-3 rounded-2xl bg-[#f0fdf4] border border-[#d1fae5]">
+                      <span className="text-xs font-bold text-slate-500">Total to charge</span>
+                      <span className="text-base font-black text-[#064e3b]">{formatNaira(calculation.totalAmountDueNaira)}</span>
+                    </div>
+
+                    <button type="button" onClick={() => { if (!canSubmitCard) { setCardError("Please check your card details and try again."); return; } handlePay(); }} className="btn-primary flex items-center justify-center gap-2">
+                      <ShieldCheck className="h-4 w-4" />
+                      Pay {formatNaira(calculation.totalAmountDueNaira)} Securely
+                    </button>
+
+                    <div className="flex justify-center gap-4">
+                      {["256-bit SSL","PCI DSS","3D Secure"].map((label) => (
+                        <div key={label} className="flex items-center gap-1">
+                          <Lock className="h-3 w-3 text-slate-400" />
+                          <span className="text-[9px] text-slate-400 font-semibold uppercase tracking-wider">{label}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </section>
+              )}
+
+              {/* ── BANK TRANSFER ─────────────────────────────────────────── */}
+              {screen === "bankTransfer" && calculation && virtualAccount && (
+                <section className="space-y-4 screen-enter">
+                  <div className="premium-card p-6 space-y-5">
+                    <div className="flex items-center gap-2">
+                      <div className="h-8 w-8 rounded-xl bg-emerald-100 flex items-center justify-center">
+                        <Landmark className="h-4 w-4 text-[#064e3b]" />
+                      </div>
+                      <div>
+                        <h2 className="text-xl font-extrabold text-[#064e3b]">Bank Transfer Details</h2>
+                        <p className="text-xs text-slate-500">Transfer the exact amount, then tap <strong>I Have Paid</strong>.</p>
+                      </div>
+                    </div>
+
+                    <div className="rounded-2xl bg-amber-50 border border-amber-200 px-5 py-4 text-center">
+                      <p className="text-[10px] text-amber-600 font-black uppercase tracking-widest mb-1">Amount to Transfer</p>
+                      <p className="text-3xl font-black text-amber-700">{formatNaira(calculation.totalAmountDueNaira)}</p>
+                      <p className="text-[10px] text-amber-500 mt-1">Transfer exact amount · do not round up or down</p>
+                    </div>
+
+                    <div className="rounded-2xl border border-slate-200 overflow-hidden divide-y divide-slate-100">
+                      {[
+                        { label: "Bank Name",      value: virtualAccount.bank },
+                        { label: "Account Number", value: virtualAccount.accountNumber, mono: true },
+                        { label: "Account Name",   value: virtualAccount.accountName },
+                        { label: "Amount",         value: formatNaira(calculation.totalAmountDueNaira) },
+                        { label: "Reference",      value: `TAX-${new Date().getFullYear()}-${virtualAccount.accountNumber.slice(-6)}`, mono: true },
+                      ].map((row) => (
+                        <div key={row.label} className="flex items-center justify-between px-4 py-3">
+                          <div>
+                            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">{row.label}</p>
+                            <p className={`text-sm font-bold text-[#064e3b] mt-0.5 ${row.mono ? "font-mono tracking-wider" : ""}`}>{row.value}</p>
+                          </div>
+                          <button type="button" onClick={() => copyToClipboard(row.value, setTransferCopied)} className="h-8 w-8 rounded-lg bg-slate-100 hover:bg-emerald-100 flex items-center justify-center transition-colors">
+                            <CheckCircle2 className={`h-4 w-4 ${transferCopied ? "text-emerald-500" : "text-slate-400"}`} />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+
+                    <button type="button" onClick={() => { const text = `Bank: ${virtualAccount.bank}\nAccount: ${virtualAccount.accountNumber}\nName: ${virtualAccount.accountName}\nAmount: ${formatNaira(calculation.totalAmountDueNaira)}`; copyToClipboard(text, setTransferCopied); }} className={`w-full py-3 rounded-2xl border text-sm font-black transition-all flex items-center justify-center gap-2 ${transferCopied ? "bg-emerald-500 text-white border-emerald-500" : "bg-white text-[#064e3b] border-[#064e3b]"}`}>
+                      <CheckCircle2 className="h-4 w-4" />
+                      {transferCopied ? "✓ Copied to clipboard!" : "Copy All Details"}
+                    </button>
+
+                    <div className={`flex items-center justify-center gap-2 py-2 rounded-xl ${transferCountdown < 300 ? "bg-rose-50" : "bg-slate-50"}`}>
+                      <Loader2 className={`h-3.5 w-3.5 ${transferCountdown < 300 ? "text-rose-500 animate-spin" : "text-slate-400"}`} />
+                      <span className={`text-xs font-black ${transferCountdown < 300 ? "text-rose-500" : "text-slate-500"}`}>
+                        Account expires in {formatCountdown(transferCountdown)}
+                      </span>
+                    </div>
+
+                    <button type="button" onClick={() => setConfirmSheetOpen(true)} className="btn-primary flex items-center justify-center gap-2">
+                      <CheckCircle2 className="h-4 w-4" />
+                      I Have Paid — Confirm Transfer
+                    </button>
+                  </div>
+
+                  {confirmSheetOpen && (
+                    <div className="fixed inset-0 z-50 flex items-end justify-center" style={{ background: "rgba(0,0,0,0.5)" }}>
+                      <div className="w-full max-w-md bg-white rounded-t-3xl p-6 space-y-4 screen-enter">
+                        <div className="w-12 h-1 bg-slate-200 rounded-full mx-auto" />
+                        <div className="text-center space-y-2">
+                          <div className="w-14 h-14 rounded-full bg-emerald-100 flex items-center justify-center mx-auto">
+                            <CheckCircle2 className="h-7 w-7 text-[#064e3b]" />
+                          </div>
+                          <h3 className="text-lg font-extrabold text-[#064e3b]">Confirm Payment</h3>
+                          <p className="text-sm text-slate-500">Have you completed the transfer of <strong className="text-[#064e3b]">{formatNaira(calculation.totalAmountDueNaira)}</strong> to {virtualAccount.bank}?</p>
+                        </div>
+                        <button type="button" onClick={() => { setConfirmSheetOpen(false); handlePay(); }} className="btn-primary">✓ Yes, I Have Paid</button>
+                        <button type="button" onClick={() => setConfirmSheetOpen(false)} className="w-full py-3 rounded-2xl text-sm font-black text-slate-500 hover:text-slate-700">Not yet — go back</button>
+                      </div>
+                    </div>
+                  )}
+                </section>
+              )}
+
+              {/* ── USSD PAYMENT ──────────────────────────────────────────── */}
+              {screen === "ussdPayment" && calculation && (
+                <section className="space-y-4 screen-enter">
+                  <div className="premium-card p-6 space-y-5">
+                    <div className="flex items-center gap-2">
+                      <div className="h-8 w-8 rounded-xl bg-emerald-100 flex items-center justify-center">
+                        <Smartphone className="h-4 w-4 text-[#064e3b]" />
+                      </div>
+                      <div>
+                        <h2 className="text-xl font-extrabold text-[#064e3b]">USSD Payment</h2>
+                        <p className="text-xs text-slate-500">Select your bank, then dial the code below.</p>
+                      </div>
+                    </div>
+
+                    <div>
+                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Select your bank</p>
+                      <div className="flex flex-wrap gap-2">
+                        {USSD_BANKS.map((b) => (
+                          <button key={b.bank} type="button" onClick={() => setUssdBank(b.bank)} className={`px-3 py-1.5 rounded-full text-xs font-black border transition-all ${ussdBank === b.bank ? "bg-[#064e3b] text-white border-[#064e3b]" : "bg-white text-slate-600 border-slate-200 hover:border-emerald-400"}`}>
+                            {b.bank}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="rounded-2xl border-2 border-[#064e3b] bg-[#f0fdf4] px-6 py-5 text-center">
+                      <p className="text-[9px] text-slate-400 font-black uppercase tracking-widest mb-2">{ussdBank} USSD Code</p>
+                      <p className="font-mono text-3xl font-black text-[#064e3b] tracking-wider">{ussdCode()}</p>
+                      <p className="text-[10px] text-slate-500 mt-2">Dial this code on your {ussdBank} registered SIM</p>
+                    </div>
+
+                    <div className="flex justify-between items-center px-4 py-3 rounded-2xl bg-amber-50 border border-amber-200">
+                      <span className="text-xs font-bold text-amber-600">Amount</span>
+                      <span className="text-base font-black text-amber-700">{formatNaira(calculation.totalAmountDueNaira)}</span>
+                    </div>
+
+                    <a href={`tel:${ussdCode().replace(/#/g, "%23")}`} className="btn-primary flex items-center justify-center gap-2" style={{ display:"flex", textDecoration:"none", color:"#fff" }}>
+                      <Smartphone className="h-4 w-4" />
+                      Dial {ussdCode()} Now
+                    </a>
+
+                    <button type="button" onClick={() => setConfirmSheetOpen(true)} className="w-full py-3 rounded-2xl border-2 border-[#064e3b] text-sm font-black text-[#064e3b] hover:bg-emerald-50 transition-colors flex items-center justify-center gap-2">
+                      <CheckCircle2 className="h-4 w-4" />
+                      I Have Paid
+                    </button>
+
+                    <p className="text-[10px] text-slate-400 text-center">After dialling, follow your bank&apos;s prompts to complete the transfer. Then tap <strong>I Have Paid</strong>.</p>
+                  </div>
+
+                  {confirmSheetOpen && (
+                    <div className="fixed inset-0 z-50 flex items-end justify-center" style={{ background: "rgba(0,0,0,0.5)" }}>
+                      <div className="w-full max-w-md bg-white rounded-t-3xl p-6 space-y-4 screen-enter">
+                        <div className="w-12 h-1 bg-slate-200 rounded-full mx-auto" />
+                        <div className="text-center space-y-2">
+                          <div className="w-14 h-14 rounded-full bg-emerald-100 flex items-center justify-center mx-auto">
+                            <Smartphone className="h-7 w-7 text-[#064e3b]" />
+                          </div>
+                          <h3 className="text-lg font-extrabold text-[#064e3b]">Confirm USSD Payment</h3>
+                          <p className="text-sm text-slate-500">Have you dialled <strong className="font-mono text-[#064e3b]">{ussdCode()}</strong> and completed the payment of <strong className="text-[#064e3b]">{formatNaira(calculation.totalAmountDueNaira)}</strong>?</p>
+                        </div>
+                        <button type="button" onClick={() => { setConfirmSheetOpen(false); handlePay(); }} className="btn-primary">✓ Yes, Payment Complete</button>
+                        <button type="button" onClick={() => setConfirmSheetOpen(false)} className="w-full py-3 rounded-2xl text-sm font-black text-slate-500 hover:text-slate-700">Not yet — go back</button>
+                      </div>
+                    </div>
+                  )}
                 </section>
               )}
 

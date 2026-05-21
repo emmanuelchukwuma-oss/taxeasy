@@ -775,3 +775,71 @@ html, body {
   0%, 100% { border-color: rgba(52, 211, 153, 0.4); }
   50%       { border-color: rgba(52, 211, 153, 0.85); }
 }
+
+/* ════════════════════════════════════════════════════
+   CARD PAYMENT — 3D flip animation
+   ════════════════════════════════════════════════════ */
+
+.card-scene {
+  width: 100%;
+  aspect-ratio: 1.586;   /* standard credit card ratio 85.6 × 53.98mm */
+  perspective: 900px;
+}
+
+.card-inner {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  transform-style: preserve-3d;
+  transition: transform 0.42s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.card-inner.flipped {
+  transform: rotateY(180deg);
+}
+
+.card-face,
+.card-back {
+  position: absolute;
+  inset: 0;
+  border-radius: 16px;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  overflow: hidden;
+  box-shadow: 0 20px 60px rgba(6,78,59,0.35), 0 8px 20px rgba(6,78,59,0.2);
+}
+
+.card-back {
+  transform: rotateY(180deg);
+  background: linear-gradient(135deg, #065f46 0%, #064e3b 100%);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+/* ════════════════════════════════════════════════════
+   COPY BUTTON FLASH
+   ════════════════════════════════════════════════════ */
+
+@keyframes copyFlash {
+  0%   { background: #ecfdf5; color: #065f46; }
+  40%  { background: #10b981; color: #ffffff; }
+  100% { background: transparent; color: #064e3b; }
+}
+
+.copy-flash {
+  animation: copyFlash 1.4s ease forwards;
+}
+
+/* ════════════════════════════════════════════════════
+   BANK TRANSFER — countdown timer urgent pulse
+   ════════════════════════════════════════════════════ */
+
+@keyframes timerUrgent {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.45; }
+}
+
+.timer-urgent {
+  animation: timerUrgent 0.9s ease-in-out infinite;
+}
