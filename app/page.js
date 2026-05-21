@@ -282,7 +282,9 @@ export default function TaxEasyPremium() {
       detectedFrames.current = 0;
       setLivenessStep("passed");
       stopCamera();
-      setTimeout(() => setScreen("bvnSuccess"), 1600);
+      // Use setScreenState directly (stable useState setter) to avoid
+      // making setScreen (an unstable inline fn) a useCallback dependency.
+      setTimeout(() => setScreenState("bvnSuccess"), 1600);
     }
   }, [stopCamera]);
 
