@@ -680,14 +680,13 @@ export default function TaxEasyPremium() {
     try { await navigator.clipboard.writeText(text); onDone(); } catch (_) {}
   };
 
-  // ── Payment routing — goes to specific sub-screens (Card details, Bank Transfer details, USSD details)
+  // ── Payment routing — bypassed sub-screens to auto-complete directly
   const handleProceedToPayment = () => {
     if (!calculation) return;
     setCardError("");
-    if (paymentMethod === "card")          { setScreen("cardPayment"); }
-    if (paymentMethod === "bank_transfer") { generateVirtualAccount(); setScreen("bankTransfer"); }
-    if (paymentMethod === "ussd")          { setScreen("ussdPayment"); }
+    handlePay();
   };
+
 
   // ── handlePay — starts the automatic completing processing flow ────────
   const handlePay = () => {
