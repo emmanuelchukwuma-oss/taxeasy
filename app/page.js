@@ -372,7 +372,7 @@ export default function TaxEasyPremium() {
   const [paymentLoading, setPaymentLoading] = useState(false);
   const [paymentRecord,  setPaymentRecord]  = useState(null);
 
-  // Card payment fields
+  // ── Card payment state ─────────────────────────────────────────────────────
   const [cardNumber,  setCardNumber]  = useState("");
   const [cardExpiry,  setCardExpiry]  = useState("");
   const [cardCvv,     setCardCvv]     = useState("");
@@ -381,22 +381,21 @@ export default function TaxEasyPremium() {
   const [cardError,   setCardError]   = useState("");
   const [cardCopied,  setCardCopied]  = useState(false);
 
-  // Bank transfer — generated virtual account
-  const [virtualAccount,    setVirtualAccount]    = useState(null);
-  const [transferCopied,    setTransferCopied]    = useState(false);
-  const [confirmSheetOpen,  setConfirmSheetOpen]  = useState(false);
-  const [transferCountdown, setTransferCountdown] = useState(1800); // 30 min in seconds
-  const countdownRef = useRef(null);
+  // Virtual account lives in a REF (not state) so it is readable
+  // synchronously the instant the bankTransfer screen renders.
+  const virtualAccountRef = useRef(null);
+  const [vaDisplay,     setVaDisplay]     = useState(null); // triggers re-render
+  const [transferCopied,   setTransferCopied]   = useState(false);
+  const [confirmSheetOpen, setConfirmSheetOpen] = useState(false);
+  const [transferCountdown,setTransferCountdown] = useState(1800);
+  const countdownRef       = useRef(null);
+  const [ussdBank,         setUssdBank]    = useState("GTBank");
 
-  // USSD bank selector
-  const [ussdBank, setUssdBank] = useState("GTBank");
-
-  // Payment processing steps
+  // Payment processing
   const [processingStep, setProcessingStep] = useState(0);
-  const [paymentKey,     setPaymentKey]     = useState(0);  // increments every Pay tap
-  const processingTickerRef = useRef(null);
-  const processingFinalRef  = useRef(null);
-  const pendingPaymentRef   = useRef(null); // record snapshot, read by useEffect
+  const payTimerRef    = useRef(null);
+  const payTickerRef   = useRef(null);
+  const pendingPayRef  = useRef(null);  // record written before setTimeout fires
 
   const canContinuePhone = phone.trim().replace(/\s/g, "").length >= 10;
   const canVerifyOtp = otp.trim().length === 6;
@@ -449,53 +448,6 @@ export default function TaxEasyPremium() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [otp]);
-
-  // ── Payment processing engine ─────────────────────────────────────────────
-  // Watches paymentKey (a counter that increments each time Pay is tapped).
-  // This fires reliably even when screen was already "paymentProcessing".
-  useEffect(() => {
-    if (paymentKey === 0) return;           // skip initial mount
-    const record = pendingPaymentRef.current;
-    if (!record) return;
-
-    // Clear any leftover timers from a previous attempt
-    if (processingTickerRef.current) clearInterval(processingTickerRef.current);
-    if (processingFinalRef.current)  clearTimeout(processingFinalRef.current);
-
-    setProcessingStep(0);
-
-    // Tick through steps every 600 ms
-    let step = 0;
-    processingTickerRef.current = setInterval(() => {
-      step += 1;
-      if (step < PROCESSING_STEPS.length) {
-        setProcessingStep(step);
-      } else {
-        clearInterval(processingTickerRef.current);
-        processingTickerRef.current = null;
-      }
-    }, 600);
-
-    // Navigate to success after 3 400 ms
-    processingFinalRef.current = setTimeout(() => {
-      if (processingTickerRef.current) {
-        clearInterval(processingTickerRef.current);
-        processingTickerRef.current = null;
-      }
-      const r = pendingPaymentRef.current;
-      pendingPaymentRef.current = null;
-      setPaymentRecord(r);
-      saveToHistory(r);
-      setPaymentLoading(false);
-      setScreenState("paymentSuccess");  // bypass setScreen nav-stack logic
-    }, 3400);
-
-    return () => {
-      clearInterval(processingTickerRef.current);
-      clearTimeout(processingFinalRef.current);
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [paymentKey]);
 
   const handleCalculate = () => {
     setCalcError("");
@@ -646,26 +598,22 @@ export default function TaxEasyPremium() {
     cardName.trim().length >= 2;
 
   // ── Bank transfer helpers ─────────────────────────────────────────────────
+  // generateVirtualAccount writes to BOTH a ref (for instant read) and
+  // a state var (to trigger a re-render of the bankTransfer screen).
   const generateVirtualAccount = () => {
-    const seed   = (identityNumber || "0000000000").replace(/\D/g, "").slice(-4).padStart(4, "0");
+    const seed   = (identityNumber || "0000000000").replace(/\D/g,"").slice(-4).padStart(4,"0");
     const amount = calculation?.totalAmountDueNaira || 0;
-    const suffix = String(amount).slice(-4).padStart(4, "0");
+    const suffix = String(amount).slice(-4).padStart(4,"0");
     const acctNo = `903${seed}${suffix}`.slice(0, 10);
-    const banks  = ["Wema Bank", "Sterling Bank", "Providus Bank", "Fidelity Bank"];
-    const bank   = banks[parseInt(seed, 10) % banks.length];
-    setVirtualAccount({
-      bank,
-      accountNumber: acctNo,
-      accountName:   "FIRS / TAXEASY COLLECTIONS",
-    });
+    const bankList = ["Wema Bank", "Sterling Bank", "Providus Bank", "Fidelity Bank"];
+    const bank   = bankList[parseInt(seed, 10) % bankList.length];
+    const va = { bank, accountNumber: acctNo, accountName: "FIRS / TAXEASY COLLECTIONS" };
+    virtualAccountRef.current = va;
+    setVaDisplay(va);           // force re-render
     setTransferCountdown(1800);
-    // Start 30-min countdown
     if (countdownRef.current) clearInterval(countdownRef.current);
     countdownRef.current = setInterval(() => {
-      setTransferCountdown((s) => {
-        if (s <= 1) { clearInterval(countdownRef.current); return 0; }
-        return s - 1;
-      });
+      setTransferCountdown(s => { if (s <= 1) { clearInterval(countdownRef.current); return 0; } return s - 1; });
     }, 1000);
   };
 
@@ -691,7 +639,6 @@ export default function TaxEasyPremium() {
   };
 
   // ── Payment routing ───────────────────────────────────────────────────────
-  // Routes from paymentMethod → method-specific detail screen
   const handleProceedToPayment = () => {
     setCardError("");
     if (paymentMethod === "card")          { setScreen("cardPayment"); }
@@ -699,28 +646,19 @@ export default function TaxEasyPremium() {
     if (paymentMethod === "ussd")          { setScreen("ussdPayment"); }
   };
 
-  // Copy to clipboard helper
-  const copyToClipboard = async (text, setCopied) => {
-    try {
-      await navigator.clipboard.writeText(text);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    } catch (_) {}
+  const copyToClipboard = async (text, onDone) => {
+    try { await navigator.clipboard.writeText(text); onDone(); } catch (_) {}
   };
 
-  // ── handlePay ─────────────────────────────────────────────────────────────
+  // ── handlePay: plain window.setTimeout, reads everything from refs ────────
   const handlePay = () => {
     if (!calculation) return;
+    if (countdownRef.current) { clearInterval(countdownRef.current); countdownRef.current = null; }
+    if (payTimerRef.current)  { clearTimeout(payTimerRef.current);  payTimerRef.current  = null; }
+    if (payTickerRef.current) { clearInterval(payTickerRef.current); payTickerRef.current = null; }
 
-    // Stop bank-transfer countdown if running
-    if (countdownRef.current) {
-      clearInterval(countdownRef.current);
-      countdownRef.current = null;
-    }
-
-    // Snapshot the record into a ref so the useEffect closure is always fresh
     const now = new Date();
-    pendingPaymentRef.current = {
+    pendingPayRef.current = {
       reference:       `TXE-${now.getFullYear()}-${Math.floor(100000 + Math.random() * 900000)}`,
       amountNaira:     calculation.totalAmountDueNaira,
       taxNaira:        calculation.totalTaxNaira,
@@ -729,14 +667,37 @@ export default function TaxEasyPremium() {
       paidAt:          now.toISOString(),
       statementSource: parsedStatement?.bank || "Manual estimate",
       identity:        bvnProfile?.bvn || maskedIdentity(),
-      identityType:    identityType,
+      identityType,
       name:            bvnProfile?.fullName || "Verified Taxpayer",
     };
 
     setPaymentLoading(true);
     setProcessingStep(0);
-    setScreenState("paymentProcessing");  // bypass nav-stack; direct state write
-    setPaymentKey((k) => k + 1);          // ← THIS triggers the useEffect
+    setScreenState("paymentProcessing");
+
+    // Step ticker — reads PROCESSING_STEPS from module scope (never stale)
+    let step = 0;
+    payTickerRef.current = setInterval(() => {
+      step += 1;
+      if (step < PROCESSING_STEPS.length) {
+        setProcessingStep(step);
+      } else {
+        clearInterval(payTickerRef.current);
+        payTickerRef.current = null;
+      }
+    }, 600);
+
+    // Final transition — reads record from ref (never stale)
+    payTimerRef.current = setTimeout(() => {
+      if (payTickerRef.current) { clearInterval(payTickerRef.current); payTickerRef.current = null; }
+      const rec = pendingPayRef.current;
+      if (!rec) return;
+      pendingPayRef.current = null;
+      setPaymentRecord(rec);
+      saveToHistory(rec);
+      setPaymentLoading(false);
+      setScreenState("paymentSuccess");
+    }, 3400);
   };
 
   const paymentMethodLabel = (value) => {
@@ -2272,69 +2233,145 @@ export default function TaxEasyPremium() {
               {/* ── CARD PAYMENT ─────────────────────────────────────────── */}
               {screen === "cardPayment" && calculation && (
                 <section className="space-y-4 screen-enter">
-                  {/* Live card preview */}
-                  <div className="card-scene mx-auto" style={{ maxWidth: 360 }}>
-                    <div className={`card-inner ${cardFlipped ? "flipped" : ""}`}>
-                      <div className="card-face flex flex-col justify-between p-6" style={{ background: "linear-gradient(135deg,#064e3b 0%,#065f46 60%,#0d9488 100%)" }}>
-                        <div className="flex items-start justify-between">
-                          <div className="w-10 h-7 rounded-md" style={{ background: "linear-gradient(135deg,#fcd34d,#f59e0b)" }} />
-                          <span className="text-xs font-black text-white/70 tracking-widest">{cardNetwork(cardNumber)?.label || ""}</span>
+                  {/* Live 3D Card Preview */}
+                  <div style={{ perspective: "900px", maxWidth: 360, margin: "0 auto" }}>
+                    <div style={{
+                      position: "relative", height: 200, width: "100%",
+                      transformStyle: "preserve-3d",
+                      transition: "transform 0.42s cubic-bezier(.4,0,.2,1)",
+                      transform: cardFlipped ? "rotateY(180deg)" : "rotateY(0deg)"
+                    }}>
+                      {/* Front */}
+                      <div style={{
+                        position: "absolute", inset: 0, backfaceVisibility: "hidden",
+                        borderRadius: 20, padding: "24px",
+                        background: "linear-gradient(135deg,#064e3b 0%,#065f46 60%,#0d9488 100%)",
+                        display: "flex", flexDirection: "column", justifyContent: "space-between"
+                      }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+                          <div style={{ width: 40, height: 28, borderRadius: 6, background: "linear-gradient(135deg,#fcd34d,#f59e0b)" }} />
+                          <span style={{ fontSize: 11, fontWeight: 900, color: "rgba(255,255,255,0.7)", letterSpacing: "0.1em" }}>
+                            {cardNetwork(cardNumber)?.label || ""}
+                          </span>
                         </div>
                         <div>
-                          <p className="font-mono text-xl font-black text-white tracking-[0.25em] mb-3" style={{ minHeight: 28 }}>
-                            {(cardNumber || "").padEnd(16,"•").match(/.{1,4}/g)?.join(" ")}
+                          <p style={{ fontFamily: "monospace", fontSize: 20, fontWeight: 900, color: "#fff", letterSpacing: "0.25em", marginBottom: 12 }}>
+                            {(cardNumber || "").padEnd(16, "•").match(/.{1,4}/g)?.join(" ")}
                           </p>
-                          <div className="flex justify-between items-end">
+                          <div style={{ display: "flex", justifyContent: "space-between" }}>
                             <div>
-                              <p className="text-[9px] text-white/50 uppercase tracking-widest mb-0.5">Card Holder</p>
-                              <p className="text-sm font-bold text-white uppercase tracking-wider">{cardName || "FULL NAME"}</p>
+                              <p style={{ fontSize: 9, color: "rgba(255,255,255,0.5)", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 2 }}>Card Holder</p>
+                              <p style={{ fontSize: 13, fontWeight: 700, color: "#fff", textTransform: "uppercase", letterSpacing: "0.06em" }}>{cardName || "FULL NAME"}</p>
                             </div>
-                            <div className="text-right">
-                              <p className="text-[9px] text-white/50 uppercase tracking-widest mb-0.5">Expires</p>
-                              <p className="text-sm font-bold text-white">{cardExpiry || "MM/YY"}</p>
+                            <div style={{ textAlign: "right" }}>
+                              <p style={{ fontSize: 9, color: "rgba(255,255,255,0.5)", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 2 }}>Expires</p>
+                              <p style={{ fontSize: 13, fontWeight: 700, color: "#fff" }}>{cardExpiry || "MM/YY"}</p>
                             </div>
                           </div>
                         </div>
                       </div>
-                      <div className="card-back flex flex-col justify-center">
-                        <div className="w-full h-10 bg-black/40 mb-4" />
-                        <div className="mx-6">
-                          <p className="text-[9px] text-white/50 uppercase tracking-widest mb-1">CVV</p>
-                          <div className="bg-white/20 rounded-lg px-4 py-2 flex justify-end">
-                            <span className="font-mono font-black text-white tracking-widest">{cardCvv ? "•".repeat(cardCvv.length) : "•••"}</span>
+                      {/* Back */}
+                      <div style={{
+                        position: "absolute", inset: 0, backfaceVisibility: "hidden",
+                        borderRadius: 20,
+                        background: "linear-gradient(135deg,#0d9488 0%,#065f46 100%)",
+                        transform: "rotateY(180deg)",
+                        display: "flex", flexDirection: "column", justifyContent: "center"
+                      }}>
+                        <div style={{ width: "100%", height: 40, background: "rgba(0,0,0,0.4)", marginBottom: 16 }} />
+                        <div style={{ padding: "0 24px" }}>
+                          <p style={{ fontSize: 9, color: "rgba(255,255,255,0.5)", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 4 }}>CVV</p>
+                          <div style={{ background: "rgba(255,255,255,0.2)", borderRadius: 8, padding: "8px 16px", textAlign: "right" }}>
+                            <span style={{ fontFamily: "monospace", fontWeight: 900, color: "#fff", letterSpacing: "0.2em" }}>
+                              {cardCvv ? "•".repeat(cardCvv.length) : "•••"}
+                            </span>
                           </div>
                         </div>
                       </div>
                     </div>
                   </div>
 
-                  {/* Card form */}
+                  {/* Card Form */}
                   <div className="premium-card p-6 space-y-4">
-                    <div className="space-y-1">
+                    <div>
                       <h2 className="text-xl font-extrabold text-[#064e3b]">Enter card details</h2>
                       <p className="text-xs text-slate-500">Visa · Mastercard · Verve accepted</p>
                     </div>
 
-                    <div className="input-flex-wrap">
-                      <span className="input-left-chip"><CreditCard className="h-4 w-4 text-[#064e3b]" /><span className="text-[10px] font-black text-[#064e3b] uppercase tracking-wider">Card No</span></span>
-                      <input type="tel" inputMode="numeric" placeholder="0000 0000 0000 0000" value={cardNumber} onChange={(e) => setCardNumber(formatCardNumber(e.target.value))} className="input-right-field font-mono tracking-widest" maxLength={19} />
-                      {cardNetwork(cardNumber) && <span className="pr-3 text-[10px] font-black" style={{ color: cardNetwork(cardNumber).color }}>{cardNetwork(cardNumber).label}</span>}
+                    {/* Card Number */}
+                    <div>
+                      <label style={{ display: "block", fontSize: 10, fontWeight: 900, color: "#064e3b", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 6 }}>Card Number</label>
+                      <div style={{ display: "flex", alignItems: "center", border: "1.5px solid #d1fae5", borderRadius: 14, overflow: "hidden", background: "#fff" }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "0 12px", borderRight: "1.5px solid #d1fae5", height: 52, background: "#f8fafc", flexShrink: 0 }}>
+                          <CreditCard className="h-4 w-4 text-[#064e3b]" />
+                          <span style={{ fontSize: 10, fontWeight: 900, color: "#064e3b", textTransform: "uppercase", letterSpacing: "0.06em" }}>Card</span>
+                        </div>
+                        <input
+                          type="tel" inputMode="numeric"
+                          placeholder="0000 0000 0000 0000"
+                          value={cardNumber}
+                          onChange={(e) => setCardNumber(formatCardNumber(e.target.value))}
+                          maxLength={19}
+                          style={{ flex: 1, height: 52, border: "none", outline: "none", background: "transparent", padding: "0 12px", fontFamily: "monospace", fontWeight: 700, letterSpacing: "0.15em", fontSize: 14 }}
+                        />
+                        {cardNetwork(cardNumber) && (
+                          <span style={{ paddingRight: 12, fontSize: 10, fontWeight: 900, color: cardNetwork(cardNumber).color }}>{cardNetwork(cardNumber).label}</span>
+                        )}
+                      </div>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-3">
-                      <div className="input-flex-wrap">
-                        <span className="input-left-chip"><Calendar className="h-4 w-4 text-[#064e3b]" /><span className="text-[10px] font-black text-[#064e3b] uppercase tracking-wider">Exp</span></span>
-                        <input type="tel" inputMode="numeric" placeholder="MM/YY" value={cardExpiry} onChange={(e) => setCardExpiry(formatExpiry(e.target.value))} className="input-right-field font-mono" maxLength={5} />
+                    {/* Expiry + CVV */}
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                      <div>
+                        <label style={{ display: "block", fontSize: 10, fontWeight: 900, color: "#064e3b", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 6 }}>Expiry</label>
+                        <div style={{ display: "flex", alignItems: "center", border: "1.5px solid #d1fae5", borderRadius: 14, overflow: "hidden", background: "#fff" }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "0 10px", borderRight: "1.5px solid #d1fae5", height: 52, background: "#f8fafc", flexShrink: 0 }}>
+                            <Calendar className="h-4 w-4 text-[#064e3b]" />
+                          </div>
+                          <input
+                            type="tel" inputMode="numeric" placeholder="MM/YY"
+                            value={cardExpiry}
+                            onChange={(e) => setCardExpiry(formatExpiry(e.target.value))}
+                            maxLength={5}
+                            style={{ flex: 1, height: 52, border: "none", outline: "none", background: "transparent", padding: "0 10px", fontFamily: "monospace", fontWeight: 700, fontSize: 14 }}
+                          />
+                        </div>
                       </div>
-                      <div className="input-flex-wrap">
-                        <span className="input-left-chip"><Lock className="h-4 w-4 text-[#064e3b]" /><span className="text-[10px] font-black text-[#064e3b] uppercase tracking-wider">CVV</span></span>
-                        <input type="tel" inputMode="numeric" placeholder="•••" value={cardCvv} onChange={(e) => setCardCvv(e.target.value.replace(/\D/g,"").slice(0,4))} onFocus={() => setCardFlipped(true)} onBlur={() => setCardFlipped(false)} className="input-right-field font-mono tracking-widest" maxLength={4} />
+                      <div>
+                        <label style={{ display: "block", fontSize: 10, fontWeight: 900, color: "#064e3b", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 6 }}>CVV</label>
+                        <div style={{ display: "flex", alignItems: "center", border: "1.5px solid #d1fae5", borderRadius: 14, overflow: "hidden", background: "#fff" }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "0 10px", borderRight: "1.5px solid #d1fae5", height: 52, background: "#f8fafc", flexShrink: 0 }}>
+                            <Lock className="h-4 w-4 text-[#064e3b]" />
+                          </div>
+                          <input
+                            type="tel" inputMode="numeric" placeholder="•••"
+                            value={cardCvv}
+                            onChange={(e) => setCardCvv(e.target.value.replace(/\D/g, "").slice(0, 4))}
+                            onFocus={() => setCardFlipped(true)}
+                            onBlur={() => setCardFlipped(false)}
+                            maxLength={4}
+                            style={{ flex: 1, height: 52, border: "none", outline: "none", background: "transparent", padding: "0 10px", fontFamily: "monospace", fontWeight: 700, fontSize: 14, letterSpacing: "0.2em" }}
+                          />
+                        </div>
                       </div>
                     </div>
 
-                    <div className="input-flex-wrap">
-                      <span className="input-left-chip"><UserCheck className="h-4 w-4 text-[#064e3b]" /><span className="text-[10px] font-black text-[#064e3b] uppercase tracking-wider">Name</span></span>
-                      <input type="text" placeholder="Full name as on card" value={cardName} onChange={(e) => setCardName(e.target.value.toUpperCase())} className="input-right-field uppercase" autoComplete="cc-name" />
+                    {/* Name on Card */}
+                    <div>
+                      <label style={{ display: "block", fontSize: 10, fontWeight: 900, color: "#064e3b", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 6 }}>Name on Card</label>
+                      <div style={{ display: "flex", alignItems: "center", border: "1.5px solid #d1fae5", borderRadius: 14, overflow: "hidden", background: "#fff" }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "0 12px", borderRight: "1.5px solid #d1fae5", height: 52, background: "#f8fafc", flexShrink: 0 }}>
+                          <UserCheck className="h-4 w-4 text-[#064e3b]" />
+                          <span style={{ fontSize: 10, fontWeight: 900, color: "#064e3b", textTransform: "uppercase", letterSpacing: "0.06em" }}>Name</span>
+                        </div>
+                        <input
+                          type="text" placeholder="Full name as on card"
+                          value={cardName}
+                          onChange={(e) => setCardName(e.target.value.toUpperCase())}
+                          autoComplete="cc-name"
+                          style={{ flex: 1, height: 52, border: "none", outline: "none", background: "transparent", padding: "0 12px", fontWeight: 700, fontSize: 14, textTransform: "uppercase" }}
+                        />
+                      </div>
                     </div>
 
                     {cardError && (
@@ -2344,18 +2381,25 @@ export default function TaxEasyPremium() {
                       </div>
                     )}
 
-                    <div className="flex justify-between items-center px-4 py-3 rounded-2xl bg-[#f0fdf4] border border-[#d1fae5]">
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 16px", borderRadius: 16, background: "#f0fdf4", border: "1px solid #d1fae5" }}>
                       <span className="text-xs font-bold text-slate-500">Total to charge</span>
                       <span className="text-base font-black text-[#064e3b]">{formatNaira(calculation.totalAmountDueNaira)}</span>
                     </div>
 
-                    <button type="button" onClick={() => { if (!canSubmitCard) { setCardError("Please check your card details and try again."); return; } handlePay(); }} className="btn-primary flex items-center justify-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (!canSubmitCard) { setCardError("Please check your card details and try again."); return; }
+                        handlePay();
+                      }}
+                      className="btn-primary flex items-center justify-center gap-2"
+                    >
                       <ShieldCheck className="h-4 w-4" />
                       Pay {formatNaira(calculation.totalAmountDueNaira)} Securely
                     </button>
 
                     <div className="flex justify-center gap-4">
-                      {["256-bit SSL","PCI DSS","3D Secure"].map((label) => (
+                      {["256-bit SSL", "PCI DSS", "3D Secure"].map((label) => (
                         <div key={label} className="flex items-center gap-1">
                           <Lock className="h-3 w-3 text-slate-400" />
                           <span className="text-[9px] text-slate-400 font-semibold uppercase tracking-wider">{label}</span>
@@ -2367,7 +2411,7 @@ export default function TaxEasyPremium() {
               )}
 
               {/* ── BANK TRANSFER ─────────────────────────────────────────── */}
-              {screen === "bankTransfer" && calculation && virtualAccount && (
+              {screen === "bankTransfer" && calculation && (
                 <section className="space-y-4 screen-enter">
                   <div className="premium-card p-6 space-y-5">
                     <div className="flex items-center gap-2">
@@ -2375,53 +2419,79 @@ export default function TaxEasyPremium() {
                         <Landmark className="h-4 w-4 text-[#064e3b]" />
                       </div>
                       <div>
-                        <h2 className="text-xl font-extrabold text-[#064e3b]">Bank Transfer Details</h2>
+                        <h2 className="text-xl font-extrabold text-[#064e3b]">Bank Transfer</h2>
                         <p className="text-xs text-slate-500">Transfer the exact amount, then tap <strong>I Have Paid</strong>.</p>
                       </div>
                     </div>
 
-                    <div className="rounded-2xl bg-amber-50 border border-amber-200 px-5 py-4 text-center">
-                      <p className="text-[10px] text-amber-600 font-black uppercase tracking-widest mb-1">Amount to Transfer</p>
-                      <p className="text-3xl font-black text-amber-700">{formatNaira(calculation.totalAmountDueNaira)}</p>
-                      <p className="text-[10px] text-amber-500 mt-1">Transfer exact amount · do not round up or down</p>
+                    <div style={{ borderRadius: 16, background: "#fffbeb", border: "1px solid #fde68a", padding: "16px 20px", textAlign: "center" }}>
+                      <p style={{ fontSize: 10, fontWeight: 900, color: "#b45309", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 4 }}>Amount to Transfer</p>
+                      <p style={{ fontSize: 30, fontWeight: 900, color: "#92400e" }}>{formatNaira(calculation.totalAmountDueNaira)}</p>
+                      <p style={{ fontSize: 10, color: "#d97706", marginTop: 4 }}>Transfer exact amount · do not round up or down</p>
                     </div>
 
-                    <div className="rounded-2xl border border-slate-200 overflow-hidden divide-y divide-slate-100">
-                      {[
-                        { label: "Bank Name",      value: virtualAccount.bank },
-                        { label: "Account Number", value: virtualAccount.accountNumber, mono: true },
-                        { label: "Account Name",   value: virtualAccount.accountName },
-                        { label: "Amount",         value: formatNaira(calculation.totalAmountDueNaira) },
-                        { label: "Reference",      value: `TAX-${new Date().getFullYear()}-${virtualAccount.accountNumber.slice(-6)}`, mono: true },
-                      ].map((row) => (
-                        <div key={row.label} className="flex items-center justify-between px-4 py-3">
-                          <div>
-                            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">{row.label}</p>
-                            <p className={`text-sm font-bold text-[#064e3b] mt-0.5 ${row.mono ? "font-mono tracking-wider" : ""}`}>{row.value}</p>
-                          </div>
-                          <button type="button" onClick={() => copyToClipboard(row.value, setTransferCopied)} className="h-8 w-8 rounded-lg bg-slate-100 hover:bg-emerald-100 flex items-center justify-center transition-colors">
-                            <CheckCircle2 className={`h-4 w-4 ${transferCopied ? "text-emerald-500" : "text-slate-400"}`} />
-                          </button>
+                    {/* Account details — read from ref so always available */}
+                    {(() => {
+                      const va = virtualAccountRef.current;
+                      if (!va) return (
+                        <div className="flex items-center justify-center gap-2 py-6">
+                          <Loader2 className="h-5 w-5 animate-spin text-[#064e3b]" />
+                          <span className="text-sm text-slate-500">Generating account...</span>
                         </div>
-                      ))}
-                    </div>
+                      );
+                      const rows = [
+                        { label: "Bank Name", value: va.bank },
+                        { label: "Account Number", value: va.accountNumber, mono: true },
+                        { label: "Account Name", value: va.accountName },
+                        { label: "Amount", value: formatNaira(calculation.totalAmountDueNaira) },
+                        { label: "Reference", value: `TAX-${new Date().getFullYear()}-${va.accountNumber.slice(-6)}`, mono: true },
+                      ];
+                      return (
+                        <>
+                          <div style={{ borderRadius: 16, border: "1px solid #e2e8f0", overflow: "hidden" }}>
+                            {rows.map((row, i) => (
+                              <div key={row.label} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 16px", borderBottom: i < rows.length - 1 ? "1px solid #f1f5f9" : "none", background: "#fff" }}>
+                                <div>
+                                  <p style={{ fontSize: 9, fontWeight: 900, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.08em" }}>{row.label}</p>
+                                  <p style={{ fontSize: 14, fontWeight: 700, color: "#064e3b", marginTop: 2, fontFamily: row.mono ? "monospace" : "inherit", letterSpacing: row.mono ? "0.05em" : "normal" }}>{row.value}</p>
+                                </div>
+                                <button
+                                  type="button"
+                                  onClick={() => copyToClipboard(row.value, () => { setTransferCopied(true); setTimeout(() => setTransferCopied(false), 2000); })}
+                                  style={{ width: 32, height: 32, borderRadius: 8, background: "#f1f5f9", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
+                                >
+                                  <CheckCircle2 style={{ width: 16, height: 16, color: transferCopied ? "#10b981" : "#94a3b8" }} />
+                                </button>
+                              </div>
+                            ))}
+                          </div>
 
-                    <button type="button" onClick={() => { const text = `Bank: ${virtualAccount.bank}\nAccount: ${virtualAccount.accountNumber}\nName: ${virtualAccount.accountName}\nAmount: ${formatNaira(calculation.totalAmountDueNaira)}`; copyToClipboard(text, setTransferCopied); }} className={`w-full py-3 rounded-2xl border text-sm font-black transition-all flex items-center justify-center gap-2 ${transferCopied ? "bg-emerald-500 text-white border-emerald-500" : "bg-white text-[#064e3b] border-[#064e3b]"}`}>
-                      <CheckCircle2 className="h-4 w-4" />
-                      {transferCopied ? "✓ Copied to clipboard!" : "Copy All Details"}
-                    </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const text = `Bank: ${va.bank}\nAccount: ${va.accountNumber}\nName: ${va.accountName}\nAmount: ${formatNaira(calculation.totalAmountDueNaira)}`;
+                              copyToClipboard(text, () => { setTransferCopied(true); setTimeout(() => setTransferCopied(false), 2000); });
+                            }}
+                            style={{ width: "100%", padding: "12px", borderRadius: 16, border: `2px solid ${transferCopied ? "#10b981" : "#064e3b"}`, background: transferCopied ? "#10b981" : "#fff", color: transferCopied ? "#fff" : "#064e3b", fontWeight: 900, fontSize: 13, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, transition: "all 0.2s" }}
+                          >
+                            <CheckCircle2 style={{ width: 16, height: 16 }} />
+                            {transferCopied ? "✓ Copied!" : "Copy All Details"}
+                          </button>
 
-                    <div className={`flex items-center justify-center gap-2 py-2 rounded-xl ${transferCountdown < 300 ? "bg-rose-50" : "bg-slate-50"}`}>
-                      <Loader2 className={`h-3.5 w-3.5 ${transferCountdown < 300 ? "text-rose-500 animate-spin" : "text-slate-400"}`} />
-                      <span className={`text-xs font-black ${transferCountdown < 300 ? "text-rose-500" : "text-slate-500"}`}>
-                        Account expires in {formatCountdown(transferCountdown)}
-                      </span>
-                    </div>
+                          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, padding: "8px 16px", borderRadius: 12, background: transferCountdown < 300 ? "#fff1f2" : "#f8fafc" }}>
+                            <Loader2 style={{ width: 14, height: 14, color: transferCountdown < 300 ? "#f43f5e" : "#94a3b8" }} className="animate-spin" />
+                            <span style={{ fontSize: 12, fontWeight: 900, color: transferCountdown < 300 ? "#f43f5e" : "#64748b" }}>
+                              Account expires in {formatCountdown(transferCountdown)}
+                            </span>
+                          </div>
 
-                    <button type="button" onClick={() => setConfirmSheetOpen(true)} className="btn-primary flex items-center justify-center gap-2">
-                      <CheckCircle2 className="h-4 w-4" />
-                      I Have Paid — Confirm Transfer
-                    </button>
+                          <button type="button" onClick={() => setConfirmSheetOpen(true)} className="btn-primary flex items-center justify-center gap-2">
+                            <CheckCircle2 className="h-4 w-4" />
+                            I Have Paid — Confirm Transfer
+                          </button>
+                        </>
+                      );
+                    })()}
                   </div>
 
                   {confirmSheetOpen && (
@@ -2433,10 +2503,12 @@ export default function TaxEasyPremium() {
                             <CheckCircle2 className="h-7 w-7 text-[#064e3b]" />
                           </div>
                           <h3 className="text-lg font-extrabold text-[#064e3b]">Confirm Payment</h3>
-                          <p className="text-sm text-slate-500">Have you completed the transfer of <strong className="text-[#064e3b]">{formatNaira(calculation.totalAmountDueNaira)}</strong> to {virtualAccount.bank}?</p>
+                          <p className="text-sm text-slate-500">
+                            Have you completed the transfer of <strong className="text-[#064e3b]">{formatNaira(calculation.totalAmountDueNaira)}</strong> to {virtualAccountRef.current?.bank}?
+                          </p>
                         </div>
                         <button type="button" onClick={() => { setConfirmSheetOpen(false); handlePay(); }} className="btn-primary">✓ Yes, I Have Paid</button>
-                        <button type="button" onClick={() => setConfirmSheetOpen(false)} className="w-full py-3 rounded-2xl text-sm font-black text-slate-500 hover:text-slate-700">Not yet — go back</button>
+                        <button type="button" onClick={() => setConfirmSheetOpen(false)} className="w-full py-3 rounded-2xl text-sm font-black text-slate-500">Not yet — go back</button>
                       </div>
                     </div>
                   )}
@@ -2461,35 +2533,39 @@ export default function TaxEasyPremium() {
                       <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Select your bank</p>
                       <div className="flex flex-wrap gap-2">
                         {USSD_BANKS.map((b) => (
-                          <button key={b.bank} type="button" onClick={() => setUssdBank(b.bank)} className={`px-3 py-1.5 rounded-full text-xs font-black border transition-all ${ussdBank === b.bank ? "bg-[#064e3b] text-white border-[#064e3b]" : "bg-white text-slate-600 border-slate-200 hover:border-emerald-400"}`}>
+                          <button key={b.bank} type="button" onClick={() => setUssdBank(b.bank)}
+                            className={`px-3 py-1.5 rounded-full text-xs font-black border transition-all ${ussdBank === b.bank ? "bg-[#064e3b] text-white border-[#064e3b]" : "bg-white text-slate-600 border-slate-200 hover:border-emerald-400"}`}>
                             {b.bank}
                           </button>
                         ))}
                       </div>
                     </div>
 
-                    <div className="rounded-2xl border-2 border-[#064e3b] bg-[#f0fdf4] px-6 py-5 text-center">
-                      <p className="text-[9px] text-slate-400 font-black uppercase tracking-widest mb-2">{ussdBank} USSD Code</p>
-                      <p className="font-mono text-3xl font-black text-[#064e3b] tracking-wider">{ussdCode()}</p>
-                      <p className="text-[10px] text-slate-500 mt-2">Dial this code on your {ussdBank} registered SIM</p>
+                    <div style={{ borderRadius: 16, border: "2px solid #064e3b", background: "#f0fdf4", padding: "20px 24px", textAlign: "center" }}>
+                      <p style={{ fontSize: 9, color: "#94a3b8", fontWeight: 900, textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 8 }}>{ussdBank} USSD Code</p>
+                      <p style={{ fontFamily: "monospace", fontSize: 28, fontWeight: 900, color: "#064e3b", letterSpacing: "0.1em" }}>{ussdCode()}</p>
+                      <p style={{ fontSize: 10, color: "#64748b", marginTop: 8 }}>Dial on your {ussdBank} registered SIM</p>
                     </div>
 
-                    <div className="flex justify-between items-center px-4 py-3 rounded-2xl bg-amber-50 border border-amber-200">
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 16px", borderRadius: 16, background: "#fffbeb", border: "1px solid #fde68a" }}>
                       <span className="text-xs font-bold text-amber-600">Amount</span>
                       <span className="text-base font-black text-amber-700">{formatNaira(calculation.totalAmountDueNaira)}</span>
                     </div>
 
-                    <a href={`tel:${ussdCode().replace(/#/g, "%23")}`} className="btn-primary flex items-center justify-center gap-2" style={{ display:"flex", textDecoration:"none", color:"#fff" }}>
+                    <a href={`tel:${ussdCode().replace(/#/g, "%23")}`}
+                      className="btn-primary flex items-center justify-center gap-2"
+                      style={{ display: "flex", textDecoration: "none", color: "#fff" }}>
                       <Smartphone className="h-4 w-4" />
                       Dial {ussdCode()} Now
                     </a>
 
-                    <button type="button" onClick={() => setConfirmSheetOpen(true)} className="w-full py-3 rounded-2xl border-2 border-[#064e3b] text-sm font-black text-[#064e3b] hover:bg-emerald-50 transition-colors flex items-center justify-center gap-2">
+                    <button type="button" onClick={() => setConfirmSheetOpen(true)}
+                      className="w-full flex items-center justify-center gap-2 py-3 rounded-2xl border-2 border-[#064e3b] text-sm font-black text-[#064e3b] hover:bg-emerald-50 transition-colors">
                       <CheckCircle2 className="h-4 w-4" />
                       I Have Paid
                     </button>
 
-                    <p className="text-[10px] text-slate-400 text-center">After dialling, follow your bank&apos;s prompts to complete the transfer. Then tap <strong>I Have Paid</strong>.</p>
+                    <p className="text-[10px] text-slate-400 text-center">After dialling, follow your bank&apos;s prompts. Then tap <strong>I Have Paid</strong>.</p>
                   </div>
 
                   {confirmSheetOpen && (
@@ -2501,48 +2577,38 @@ export default function TaxEasyPremium() {
                             <Smartphone className="h-7 w-7 text-[#064e3b]" />
                           </div>
                           <h3 className="text-lg font-extrabold text-[#064e3b]">Confirm USSD Payment</h3>
-                          <p className="text-sm text-slate-500">Have you dialled <strong className="font-mono text-[#064e3b]">{ussdCode()}</strong> and completed the payment of <strong className="text-[#064e3b]">{formatNaira(calculation.totalAmountDueNaira)}</strong>?</p>
+                          <p className="text-sm text-slate-500">
+                            Have you dialled <strong className="font-mono text-[#064e3b]">{ussdCode()}</strong> and completed the payment of <strong className="text-[#064e3b]">{formatNaira(calculation.totalAmountDueNaira)}</strong>?
+                          </p>
                         </div>
                         <button type="button" onClick={() => { setConfirmSheetOpen(false); handlePay(); }} className="btn-primary">✓ Yes, Payment Complete</button>
-                        <button type="button" onClick={() => setConfirmSheetOpen(false)} className="w-full py-3 rounded-2xl text-sm font-black text-slate-500 hover:text-slate-700">Not yet — go back</button>
+                        <button type="button" onClick={() => setConfirmSheetOpen(false)} className="w-full py-3 rounded-2xl text-sm font-black text-slate-500">Not yet — go back</button>
                       </div>
                     </div>
                   )}
                 </section>
               )}
 
-              {/* PAYMENT PROCESSING SPINNER */}
+              {/* ── PAYMENT PROCESSING (clean, no duplicates) ─────────────── */}
               {screen === "paymentProcessing" && (
                 <section className="premium-card p-8 text-center space-y-6 screen-enter">
-                  <div className="relative mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-[#f0fdf4] border border-[#d1fae5] scale-110">
+                  <div className="relative mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-[#f0fdf4] border border-[#d1fae5]">
                     <Loader2 className="h-9 w-9 animate-spin text-[#064e3b]" />
                   </div>
-
                   <div className="space-y-2">
-                    <h2 className="text-lg font-black text-[#064e3b]">Processing Livelihood Settlement</h2>
-                    <p className="text-xs text-slate-500 max-w-[280px] mx-auto">
-                      Remittance details are routing through banking gateways. Do not close or refresh this panel.
-                    </p>
+                    <h2 className="text-lg font-black text-[#064e3b]">Processing Payment</h2>
+                    <p className="text-xs text-slate-500 max-w-[280px] mx-auto">Routing through banking gateways. Do not close or refresh.</p>
                   </div>
-
-                  {/* Processing Step indicators */}
-                  <div className="max-w-xs mx-auto border border-slate-100 bg-slate-50 p-4.5 rounded-2xl text-left space-y-3.5">
+                  <div className="max-w-xs mx-auto border border-slate-100 bg-slate-50 p-4 rounded-2xl text-left space-y-3">
                     {PROCESSING_STEPS.map((step, idx) => {
-                      const isActive = processingStep === idx;
-                      const isCompleted = processingStep > idx;
+                      const isActive    = processingStep === idx;
+                      const isCompleted = processingStep  >  idx;
                       return (
-                        <div
-                          key={idx}
-                          className={`flex items-center gap-3 transition-opacity duration-300 ${
-                            isActive ? "opacity-100" : isCompleted ? "opacity-60" : "opacity-30"
-                          }`}
-                        >
-                          <div className={`h-5 w-5 rounded-full flex items-center justify-center text-[10px] font-black ${
-                            isCompleted ? "bg-emerald-500 text-white" : isActive ? "bg-[#064e3b] text-white" : "bg-slate-200 text-slate-500"
-                          }`}>
+                        <div key={idx} style={{ display: "flex", alignItems: "center", gap: 12, opacity: isActive ? 1 : isCompleted ? 0.65 : 0.3, transition: "opacity 0.3s" }}>
+                          <div style={{ width: 20, height: 20, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, fontWeight: 900, flexShrink: 0, background: isCompleted ? "#10b981" : isActive ? "#064e3b" : "#e2e8f0", color: isCompleted || isActive ? "#fff" : "#64748b" }}>
                             {isCompleted ? "✓" : idx + 1}
                           </div>
-                          <span className="text-[11px] font-semibold text-slate-700 truncate">{step}</span>
+                          <span style={{ fontSize: 11, fontWeight: 600, color: "#334155" }}>{step}</span>
                         </div>
                       );
                     })}
@@ -2550,8 +2616,8 @@ export default function TaxEasyPremium() {
                 </section>
               )}
 
-              {/* PAYMENT SUCCESS CELEBRATION */}
-              {screen === "paymentSuccess" && paymentRecord && (
+              {/* ── PAYMENT SUCCESS ───────────────────────────────────────── */}
+              {screen === "paymentSuccess" && (
                 <section className="space-y-4 screen-enter">
                   <div className="hero-card px-6 py-9 text-center text-white flex flex-col items-center">
                     <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-emerald-400/20 ring-4 ring-emerald-400/30 bounce-in">
