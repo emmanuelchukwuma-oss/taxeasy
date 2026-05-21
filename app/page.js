@@ -194,12 +194,12 @@ export default function TaxEasyPremium() {
   }, []);
 
   const saveToHistory = (record) => {
-    // Persist payment history to localStorage for session continuity
-    const newHistory = [record, ...history];
-    setHistory(newHistory);
-    try {
-      localStorage.setItem("taxeasy_history", JSON.stringify(newHistory));
-    } catch (_) {}
+    // Use functional updater to avoid stale history closure
+    setHistory((prev) => {
+      const newHistory = [record, ...prev];
+      try { localStorage.setItem("taxeasy_history", JSON.stringify(newHistory)); } catch (_) {}
+      return newHistory;
+    });
   };
 
   const [phone, setPhone] = useState("");
@@ -650,15 +650,15 @@ export default function TaxEasyPremium() {
     try { await navigator.clipboard.writeText(text); onDone(); } catch (_) {}
   };
 
-  // ── handlePay: plain window.setTimeout, reads everything from refs ────────
+  // ── handlePay: guaranteed navigation via try-finally ────────────────────
   const handlePay = () => {
     if (!calculation) return;
-    if (countdownRef.current) { clearInterval(countdownRef.current); countdownRef.current = null; }
-    if (payTimerRef.current)  { clearTimeout(payTimerRef.current);  payTimerRef.current  = null; }
-    if (payTickerRef.current) { clearInterval(payTickerRef.current); payTickerRef.current = null; }
+    if (countdownRef.current)  { clearInterval(countdownRef.current);  countdownRef.current  = null; }
+    if (payTimerRef.current)   { clearTimeout(payTimerRef.current);    payTimerRef.current   = null; }
+    if (payTickerRef.current)  { clearInterval(payTickerRef.current);  payTickerRef.current  = null; }
 
     const now = new Date();
-    pendingPayRef.current = {
+    const rec = {
       reference:       `TXE-${now.getFullYear()}-${Math.floor(100000 + Math.random() * 900000)}`,
       amountNaira:     calculation.totalAmountDueNaira,
       taxNaira:        calculation.totalTaxNaira,
@@ -670,12 +670,14 @@ export default function TaxEasyPremium() {
       identityType,
       name:            bvnProfile?.fullName || "Verified Taxpayer",
     };
+    // Store in ref so the timeout callback always reads a fresh copy
+    pendingPayRef.current = rec;
 
     setPaymentLoading(true);
     setProcessingStep(0);
     setScreenState("paymentProcessing");
 
-    // Step ticker — reads PROCESSING_STEPS from module scope (never stale)
+    // Step ticker
     let step = 0;
     payTickerRef.current = setInterval(() => {
       step += 1;
@@ -687,16 +689,20 @@ export default function TaxEasyPremium() {
       }
     }, 600);
 
-    // Final transition — reads record from ref (never stale)
+    // Final transition — try-finally GUARANTEES navigation even if saveToHistory throws
     payTimerRef.current = setTimeout(() => {
       if (payTickerRef.current) { clearInterval(payTickerRef.current); payTickerRef.current = null; }
-      const rec = pendingPayRef.current;
-      if (!rec) return;
-      pendingPayRef.current = null;
-      setPaymentRecord(rec);
-      saveToHistory(rec);
-      setPaymentLoading(false);
-      setScreenState("paymentSuccess");
+      try {
+        const saved = pendingPayRef.current || rec; // fallback to local var if ref cleared
+        pendingPayRef.current = null;
+        setPaymentRecord(saved);
+        saveToHistory(saved);
+      } catch (_) {
+        // Non-fatal — history save failed, but we still navigate
+      } finally {
+        setPaymentLoading(false);
+        setScreenState("paymentSuccess");  // ALWAYS runs
+      }
     }, 3400);
   };
 
@@ -2617,7 +2623,7 @@ export default function TaxEasyPremium() {
               )}
 
               {/* ── PAYMENT SUCCESS ───────────────────────────────────────── */}
-              {screen === "paymentSuccess" && (
+              {screen === "paymentSuccess" && paymentRecord && (
                 <section className="space-y-4 screen-enter">
                   <div className="hero-card px-6 py-9 text-center text-white flex flex-col items-center">
                     <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-emerald-400/20 ring-4 ring-emerald-400/30 bounce-in">
