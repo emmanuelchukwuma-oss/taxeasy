@@ -4,6 +4,9 @@
       "Bash(python3 - <<'PY'\nimport csv, collections, json\npath=\"/Users/zacchaeusjames/Documents/Documents - Zacchaeus'/Web projects…)",
       "Bash(python3 - <<'PY'\nimport csv\nfrom collections import Counter\npath=\"/Users/zacchaeusjames/Documents/Documents - Zacchaeus'…)",
       "Bash(npm install 2>&1 || true)",
+      "Bash(npm run build 2>&1 || true)",
+      "Bash(npm run typecheck 2>&1 || true)",
+      "Bash(npm install 2>&1 || true)",
       "Bash(npm run build 2>&1 || true)"
     ]
   }

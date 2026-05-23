@@ -20,11 +20,11 @@ Manual self-declaration asks users to guess. TaxEasy starts from real transactio
 
 ## Slide 4: The Solution
 TaxEasy flow:
-Upload bank statement -> Auto-categorize transactions -> Review and correct -> Calculate tax -> Verify identity -> Pay -> Get receipt/TCC.
+Sign up or log in -> New-user dashboard prompt -> Upload bank statement -> Auto-categorize transactions -> Review and correct -> Calculate tax -> Verify identity at payment -> Pay -> Get receipt/TCC.
 
 ## Slide 5: MVP Scope
 Built:
-- Phone OTP mock login.
+- Lightweight sign-up/log-in (name, email, phone, password).
 - GTBank statement parser path and sample other-bank flow.
 - Keyword categorization.
 - Review/correction screen.
@@ -45,13 +45,14 @@ Trust: state and LGA transparency data.
 
 ## Slide 7: Demo Walkthrough
 Show:
-1. Home dashboard.
-2. Upload/use sample statement.
-3. Review and correct categories.
-4. Calculate tax.
-5. Verify BVN/NIN.
-6. Pay.
-7. Receipt, TCC, history, transparency.
+1. Sign up (new user) or log in (returning user).
+2. Home dashboard with empty-state prompt "Start with: Calculate your tax".
+3. Upload/use sample statement.
+4. Review and correct categories.
+5. Calculate tax.
+6. Verify BVN/NIN at payment.
+7. Pay.
+8. Receipt, TCC, history, transparency.
 
 ## Slide 8: Technical Execution
 Stack:
