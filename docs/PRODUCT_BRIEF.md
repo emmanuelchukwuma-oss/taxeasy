@@ -18,7 +18,7 @@ Many Nigerian SMEs, freelancers, salary earners with side income, and informal e
 
 | Included | Not Included |
 |---|---|
-| Phone + OTP mock authentication | Admin dashboard |
+| Lightweight sign-up + log-in (name, email, phone, password) | Admin dashboard |
 | Bank statement upload UI | Help center call/chat support |
 | GTBank PDF demo parser | OCR for scanned PDFs |
 | Seeded sample statements for other banks | Multi-bank auto-detection |
@@ -28,12 +28,13 @@ Many Nigerian SMEs, freelancers, salary earners with side income, and informal e
 | Deferred BVN/NIN capture at payment | Real payment gateway |
 | Mock payment, QR receipt, TCC PDF, history | SMS reading |
 | State/LGA transparency layer | Production-grade tax advisory |
+| New-user dashboard empty states with guided CTA | Complex lifecycle onboarding automation |
 
 ## Product Pillars
 
 | Pillar | MVP Evidence |
 |---|---|
-| Simplicity | Upload statement, review categories, calculate before identity capture |
+| Simplicity | Sign up or log in quickly, calculate before identity capture |
 | Proof | QR receipt, downloadable TCC, payment history |
 | Trust | Transparency layer showing state and LGA budget breakdowns |
 
@@ -41,7 +42,9 @@ Many Nigerian SMEs, freelancers, salary earners with side income, and informal e
 North Star Metric: verified digital tax payments completed per month.
 
 Supporting metrics:
-- Activation rate: users who complete first payment within 24 hours.
+- Sign-up completion rate: users who complete account creation after opening auth.
+- Activation rate: signed-up users who complete first tax calculation within 24 hours.
+- Conversion to payment: users with a tax estimate who complete first payment within 24 hours.
 - TCC issuance rate: payments resulting in TCC download.
 - Transparency engagement: paying users who view the transparency layer.
 

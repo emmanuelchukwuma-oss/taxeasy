@@ -10,7 +10,7 @@ Start with Lagos freelancers, salary earners with side income, and small retaile
 
 | Phase | Audience | Channel | Goal |
 |---|---|---|---|
-| Pilot | 20-50 freelancers and SME owners | TS Academy network, WhatsApp groups, Lagos SME communities | Validate upload-review-pay comprehension |
+| Pilot | 20-50 freelancers and SME owners | TS Academy network, WhatsApp groups, Lagos SME communities | Validate sign-up-to-calculate-to-pay comprehension |
 | Partner Beta | Fintechs, SME loan providers, tax consultants | B2B2C partnerships | Attach tax proof to existing financial workflows |
 | Government Pilot | State Internal Revenue Service innovation teams | GovTech demo, policy stakeholder meetings | Prove compliance and transparency value |
 
@@ -24,7 +24,7 @@ Start with Lagos freelancers, salary earners with side income, and small retaile
 | Tax consultants | Creates lead generation for complex cases beyond MVP rules |
 
 ## Onboarding Flow
-Phone OTP -> Statement upload -> Review categories -> Calculate -> BVN/NIN only at payment -> Mock payment -> QR receipt/TCC -> Transparency.
+Sign up or log in (name, email, phone, password) -> New-user dashboard empty state with guided CTA -> Calculate your tax -> Statement upload -> Review categories -> Calculate -> BVN/NIN only at payment -> Mock payment -> QR receipt/TCC -> Transparency.
 
 This intentionally removes unbuilt scope such as virtual bank accounts, admin dashboards, and help center call/chat support from the MVP narrative.
 
@@ -34,5 +34,6 @@ This intentionally removes unbuilt scope such as virtual bank accounts, admin da
 |---|---|
 | Parser accuracy concerns | Start with one bank format, mandatory user review, V2 confidence scores |
 | BVN trust concerns | Deferred identity capture and no MVP BVN persistence |
+| Auth drop-off at first session | Keep sign-up short (4 fields), offer log-in for returners, and route both to one CTA: "Calculate your tax" |
 | Government adoption cycle is slow | Use B2B2C fintech/SME lending channel first |
 | Users fear data misuse | Client-side MVP, plain-language privacy messaging, transparent category review |

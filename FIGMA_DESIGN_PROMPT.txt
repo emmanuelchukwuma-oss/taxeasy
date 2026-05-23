@@ -135,133 +135,103 @@ Stats strip (horizontal, 3 equal columns):
   "N0 Hidden Fees" | "90 Seconds" | "2025 Reform Act"
   Each: forest-green value (bold) + slate label below
 
-CTA area:
-  "Verify and Start" — Primary Button (full width)
+  CTA area:
+    "Create account" — Primary Button (full width)
+
 
 Trust Strip below button (with thin top border)
 
 
-SCREEN 2 — PHONE SIGN-IN
---------------------------
-Layout: Single premium card, centered, no bottom nav
+SCREEN 2 — SIGN-UP
+--------------------
+Layout: Single premium card, centered, no nav
 
 Header:
-  Forest-green smartphone icon chip (32x32, rounded-xl)
-  Title: "Sign in with phone" ExtraBold 22px
-  Subtext: "We'll send a 6-digit OTP code to verify your number." slate-500 12px
+  UserPlus icon chip (forest-green, 32x32)
+  "Create your account" ExtraBold 22px
+  Subtext: "Just a few details to get started." slate-500 12px
 
-Input row:
-  Left chip: Nigerian flag emoji + "+234" SemiBold, slate-700
-  Right input: placeholder "801 234 5678", type tel, numeric keyboard
-  Helper text below: "Example: 801 234 5678 (without the leading 0)"
+Inputs:
+  Full Name
+  Email
+  Phone (Nigeria format)
+  Password
 
-Error state: Rose pill with error message text
+CTA:
+  "Sign up" — Primary Button
+  Secondary link: "Already have an account? Log in"
 
-CTA: "Send verification code" — Primary Button
 
-
-SCREEN 3 — OTP VERIFICATION
------------------------------
-Layout: Single premium card, no nav
+SCREEN 3 — LOG-IN
+-------------------
+Layout: Single premium card, centered, no nav
 
 Header:
   Lock icon chip (forest-green, 32x32)
-  Title: "Verify your phone" ExtraBold 22px
-  Subtext: "Enter the 6-digit code sent to +234 [phone number]" — number in bold
+  "Welcome back" ExtraBold 22px
+  Subtext: "Log in to continue your tax flow." slate-500 12px
 
-Input row:
-  Left chip: Lock icon + "OTP" label (10px uppercase)
-  Input: letter-spacing 0.4em, Inter Black 20px, numeric keyboard
-  Right side: "x/6" counter or Loader2 spinner during verification
+Inputs:
+  Email or phone
+  Password
 
-Progress dots (below input, 6 dots in a row, centered):
-  Empty dot: 8x8px, slate-200, rounded-full
-  Filled dot: 20x8px (pill shape, wider), emerald-500, rounded-full
-  Dots animate left to right as digits are entered
-  AUTO-SUBMITS on the 6th digit — no confirm button needed in flow
-  Show "Confirm Code" primary button as a fallback below
-
-Resend link: "Didn't receive a code? Resend" — 10px, slate-400 + emerald-700 link
+CTA:
+  "Log in" — Primary Button
+  Secondary link: "New here? Sign up"
 
 
-SCREEN 4 — BVN / NIN ENTRY
-----------------------------
-Layout: Two stacked premium cards, no nav
+SCREEN 4 — DASHBOARD (FIRST-TIME EMPTY STATE)
+----------------------------------------------
+Layout: Desktop = sidebar left + main content right
+        Mobile = bottom nav + scrollable content
 
-Card 1 — ID Toggle:
-  Header: Fingerprint icon + "Verify Taxpayer Identity" + "SECURE NIBSS LINKAGE" badge
-  Tab switcher (2-column grid):
-    "Bank Verification (BVN)" | "National Identity (NIN)"
-    Active tab: white bg, forest-green text, shadow
-    Inactive: transparent, slate-500
+Hero:
+  "Welcome, [Name]" ExtraBold 22px
+  Helper line: "Start with: Calculate your tax"
+  Primary CTA label must be exactly: "Calculate your tax"
 
-  Input Row:
-    Left chip: ID type icon + "BVN" or "NIN" label
-    Input: 11-digit numeric, maxLength 11
-    Right: "x/11" counter
+Empty-state cards:
+  "No calculations yet" + short helper text
+  "No payments yet" + proof expectation helper text
+  "No history yet" + where receipts/TCC will appear
 
-  Info box: amber pill with AlertCircle icon + "Why we need this" text
-  CTA: "Verify Identity" — Primary Button
+Secondary CTAs:
+  "Upload statement" | "View History" | "See Transparency"
+
+
+SCREEN 5 — UPLOAD BANK STATEMENT
+---------------------------------
+Layout: Card with upload area
+
+Header: UploadCloud icon + "Upload Bank Statement"
+
+Bank selector pills (horizontal scroll):
+  GTBank | Access | Zenith | UBA | First Bank | Other
+  Active: forest-green bg, white text
+  Inactive: white bg, slate border
+
+Upload dropzone:
+  Dashed border (2px, emerald-300), rounded-2xl (24px)
+  80px height, centred content
+  UploadCloud icon (32px, emerald-500) + "Drop PDF here or tap to browse"
+  Sub-label: "GTBank statement PDF · Max 10MB"
+
+CTA: "Continue" — Primary Button
+
+
+SCREEN 6 — PAYMENT IDENTITY VERIFICATION (BVN/NIN)
+---------------------------------------------------
+Layout: Stacked cards, appears only after tax estimate and before payment
+
+Card 1 — Identity type:
+  Tabs: "Bank Verification (BVN)" | "National Identity (NIN)"
+  Input: 11-digit numeric with counter
 
 Card 2 — Privacy notice:
-  Shield icon + "Your data is encrypted" info text
-  3 bullet points: NIBSS certified | AES-256 encryption | data not stored
+  "Used only to complete this payment"
+  3 bullets: encrypted | masked in receipt/TCC | not persisted in MVP
 
-
-SCREEN 5 — FACE VERIFICATION
-------------------------------
-Layout: Full-card, camera-dominant
-
-State 1 — IDLE:
-  Camera icon (64px) in forest-green circle (96x96)
-  Title: "Face Verification Required" ExtraBold 22px
-  Subtext: "Hold your device at eye level in good lighting"
-  3 instruction rows (icon + text):
-    "Camera access required — cannot be skipped"
-    "Ensure good lighting, face forward"
-    "Hold steady for 1 to 2 seconds"
-  Primary Button: "Open Camera and Verify Face"
-
-State 2 — DETECTING (live camera active):
-  Full-width video element (aspect-ratio 3/4, rounded-2xl)
-  Green oval guide overlay centered on video (dashed border, emerald-500)
-  Animated scan line: thin emerald line sweeping top to bottom, looping 2.5s
-  Status pill below video:
-    No face: pulsing ScanFace icon + "Position your face in the oval" slate-500
-    Face found: solid green dot + "Face Detected" emerald-700
-  Progress bar (4px tall, full width): fills 0% to 100% over 1.3s when face detected
-
-State 3 — PASSED:
-  Video replaced by large animated green checkmark circle
-  "Face Verified" — ExtraBold, emerald-700
-  "Identity confirmed — redirecting..." — 12px, slate-500
-  Confetti dots fall behind
-
-State 4 — BLOCKED (camera permission denied):
-  Red AlertCircle (48px) centered
-  "Camera Access Denied" — Bold 18px, rose-600
-  "How to fix:" with 3 numbered steps
-  "Try Again" primary button + "Go Back" ghost button
-
-
-SCREEN 6 — IDENTITY VERIFIED (BVN SUCCESS)
---------------------------------------------
-Layout: Centered card, celebration state
-
-Animation: 60 confetti particles fall from top (green, gold, blue, pink, purple)
-
-Content:
-  Animated bouncing checkmark (80x80 green circle, SVG stroke-dashoffset draw animation)
-  "Identity Verified!" — ExtraBold 28px, forest-green
-  "Welcome, [FirstName]" — Bold 18px
-  Profile card below (white, rounded-2xl, shadow):
-    Avatar: initials in forest-green circle (48x48)
-    Name: full name, Bold 14px
-    BVN: "...8901" (masked), SemiBold 13px
-    DOB + Town: slate-500 12px
-    "NIBSS Verified" green pill badge
-
-CTA: "Continue to Dashboard" — Primary Button
+CTA: "Verify identity to pay" — Primary Button
 
 
 SCREEN 7 — HOME DASHBOARD
@@ -335,7 +305,7 @@ Optional deductions (collapsed by default):
   "Advanced deductions" toggle with ChevronDown icon
   Expands to show: Pension | NHF | NHIS | Life Insurance | Annual Rent
 
-CTA: "Calculate My Tax" — Primary Button
+CTA: "Calculate your tax" — Primary Button
 
 
 SCREEN 10 — DEDUCTIONS AND RELIEFS WIZARD
@@ -755,36 +725,38 @@ PROTOTYPE FLOW MAP
 ========================================
 
 [Welcome]
-    -- "Verify and Start" button -->
-[Phone Sign-In]
-    -- "Send verification code" (900ms loading) -->
-[OTP Verification]
-    -- 6th digit auto-submit (800ms delay) -->
-[BVN / NIN Entry]
-    -- "Verify Identity" (simulated NIBSS lookup) -->
-[Face Verification]
-    -- 40 frames face detected (~1.3s) auto-advance -->
-[Identity Verified / BVN Success]
-    -- "Continue to Dashboard" -->
-[Home Dashboard]
+    -- "Create account" button -->
+[Sign-Up]
+    -- "Sign up" -->
+[Dashboard (First-Time Empty State)]
+    -- "Calculate your tax" -->
+[Upload Bank Statement]
+    -- PDF selected or seeded generated -->
+[Statement Review / Categorise]
+    -- "Calculate Tax" -->
 
-From Home -- "Upload Statement" card:
+From Dashboard -- "Upload statement" secondary CTA:
   [Upload Bank Statement]
-      -- PDF selected or seeded generated -->
-  [Statement Review / Categorise]
-      -- "Calculate Tax" -->
 
-From Home -- "Manual Calculator" card:
+From Dashboard -- "View History" secondary CTA:
+  [Filing History]
+
+From Dashboard -- "See Transparency" secondary CTA:
+  [Transparency Layer]
+
+Optional path:
   [Income Type Selection]
       -->
   [Annual Income Input]
       -->
   [Deductions and Reliefs Wizard]
-      -- "Calculate My Tax" -->
+      -- "Calculate your tax" -->
 
 Both paths converge at:
   [Tax Result / Estimate]
       -- "Proceed to Payment" -->
+  [Payment Identity Verification (BVN/NIN)]
+      -- "Verify identity to pay" -->
   [Payment Method Selection]
       -- "Continue to Payment" -->
 
@@ -822,7 +794,7 @@ ADDITIONAL DESIGN NOTES
    Use N symbol everywhere (not NGN or USD).
    Show Nigerian flag emoji on phone number input.
    Reference FIRS (Federal Inland Revenue Service), NIBSS (Nigeria Inter-Bank
-   Settlement System), and BVN prominently — these build trust with Nigerian users.
+   Settlement System), and BVN/NIN only at payment — these build trust with Nigerian users.
 
 2. TRUST SIGNALS THROUGHOUT
    Every screen involving ID data or payment should display a small trust strip:
@@ -859,7 +831,7 @@ ADDITIONAL DESIGN NOTES
    Appears immediately below the relevant input field.
 
 10. THE CONFETTI
-    Used on exactly 2 screens: BVN Success and Payment Success.
+    Used on exactly 1 screen: Payment Success.
     60 coloured dots: emerald, gold, blue, pink, purple.
     Each falls from a random X position with a staggered delay (0 to 3 seconds).
     Each dot: random size (6-14px), random fall duration (2.5-4.5 seconds).
